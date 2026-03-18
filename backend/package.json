@@ -1,0 +1,17 @@
+{
+  "name": "library-iot-project",
+  "version": "1.0.0",
+  "description": "Smart Library Monitoring Backend",
+  "main": "server.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "start": "nodemon server.js"
+  },
+  "dependencies": {
+    "cors": "^2.8.5",
+    "dotenv": "^16.6.1",
+    "express": "^4.22.1",
+    "firebase": "^12.10.0",
+    "firebase-admin": "^13.7.0"
+  }
+}

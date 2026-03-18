@@ -1,0 +1,224 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Library IoT Dashboard</title>
+
+    <link
+      href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;600&display=swap"
+      rel="stylesheet"
+    />
+
+    <style>
+      * {
+        margin: 0;
+        padding: 0;
+        box-sizing: border-box;
+        font-family: "Poppins", sans-serif;
+      }
+
+      body {
+        display: flex;
+        background: #f4f7fe;
+      }
+
+      /* Sidebar */
+      .sidebar {
+        width: 220px;
+        height: 100vh;
+        background: #111827;
+        color: white;
+        padding: 20px;
+        position: fixed;
+      }
+
+      .sidebar h2 {
+        margin-bottom: 30px;
+        font-size: 20px;
+      }
+
+      .sidebar ul {
+        list-style: none;
+      }
+
+      .sidebar ul li {
+        padding: 12px;
+        margin: 10px 0;
+        border-radius: 8px;
+        cursor: pointer;
+      }
+
+      .sidebar ul li:hover {
+        background: #1f2937;
+      }
+
+      /* Main Content */
+      .main {
+        margin-left: 220px;
+        padding: 20px;
+        width: 100%;
+      }
+
+      /* Header */
+      .header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 25px;
+      }
+
+      .header h1 {
+        font-size: 24px;
+      }
+
+      /* Cards Grid */
+      .grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+        gap: 20px;
+      }
+
+      /* Card */
+      .card {
+        background: white;
+        padding: 20px;
+        border-radius: 14px;
+        box-shadow: 0 6px 18px rgba(0, 0, 0, 0.08);
+        transition: 0.2s;
+      }
+
+      .card:hover {
+        transform: translateY(-5px);
+      }
+
+      .card h3 {
+        font-size: 16px;
+        margin-bottom: 10px;
+        color: #555;
+      }
+
+      .value {
+        font-size: 22px;
+        font-weight: 600;
+      }
+
+      /* Colors */
+      .green {
+        color: #16a34a;
+      }
+      .red {
+        color: #dc2626;
+      }
+      .blue {
+        color: #2563eb;
+      }
+      .orange {
+        color: #ea580c;
+      }
+
+      /* Timestamp */
+      .timestamp {
+        margin-top: 15px;
+        font-size: 14px;
+        color: gray;
+      }
+    </style>
+  </head>
+
+  <body>
+    <!-- Sidebar -->
+    <div class="sidebar">
+      <h2>📚 Library IoT</h2>
+      <ul>
+        <li>Dashboard</li>
+        <li>Analytics</li>
+        <li>Devices</li>
+        <li>Settings</li>
+      </ul>
+    </div>
+
+    <!-- Main -->
+    <div class="main">
+      <div class="header">
+        <h1>Dashboard</h1>
+        <div id="time"></div>
+      </div>
+
+      <div class="grid" id="dashboard"></div>
+    </div>
+
+    <script>
+      async function fetchReadings() {
+        try {
+          const res = await fetch("http://localhost:8000/api/readings");
+
+          if (!res.ok) throw new Error();
+
+          const data = await res.json();
+          renderDashboard(data);
+        } catch {
+          document.getElementById("dashboard").innerHTML =
+            "<div class='card'>⚠️ Failed to load data</div>";
+        }
+      }
+
+      function renderDashboard(data) {
+        document.getElementById("dashboard").innerHTML = `
+
+    <div class="card">
+      <h3>👥 Occupancy</h3>
+      <div class="value blue">${data.occupancy.count}</div>
+      <p>Librarian: ${data.occupancy.is_librarian ? "Yes" : "No"}</p>
+    </div>
+
+    <div class="card">
+      <h3>🌡 Temperature</h3>
+      <div class="value orange">${data.environment.temperature}°C</div>
+    </div>
+
+    <div class="card">
+      <h3>💧 Humidity</h3>
+      <div class="value blue">${data.environment.humidity}%</div>
+    </div>
+
+    <div class="card">
+      <h3>🌫 Air Quality</h3>
+      <div class="value ${data.environment.airQuality > 100 ? "red" : "green"}">
+        ${data.environment.airQuality}
+      </div>
+    </div>
+
+    <div class="card">
+      <h3>🔊 Noise</h3>
+      <div class="value">${data.comfort.noise}</div>
+    </div>
+
+    <div class="card">
+      <h3>💡 Light</h3>
+      <div class="value">${data.comfort.light}</div>
+    </div>
+
+    <div class="card">
+      <h3>🚦 Traffic</h3>
+      <div class="value">${data.activity.traffic_level}</div>
+      <p>Speed: ${data.activity.speed}</p>
+    </div>
+
+    <div class="card">
+      <h3>⚡ Latency</h3>
+      <div class="value">${data.activity.latency} ms</div>
+    </div>
+
+    <div class="card">
+      <h3>🕒 Last Updated</h3>
+      <div class="timestamp">${data.timestamp}</div>
+    </div>
+  `;
+      }
+
+      fetchReadings();
+      setInterval(fetchReadings, 5000);
+    </script>
+  </body>
+</html>
