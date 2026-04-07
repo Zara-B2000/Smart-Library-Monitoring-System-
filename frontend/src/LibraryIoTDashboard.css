@@ -1,0 +1,65 @@
+.container {
+  max-width: 700px;
+  margin: 2rem auto;
+  background: rgba(255,255,255,0.15);
+  border-radius: 18px;
+  box-shadow: 0 8px 32px 0 rgba(31, 38, 135, 0.18);
+  padding: 2rem 2.5rem 1.5rem 2.5rem;
+  backdrop-filter: blur(6px);
+}
+body {
+  font-family: 'Segoe UI', Arial, sans-serif;
+  margin: 0;
+  min-height: 100vh;
+  background: linear-gradient(135deg, #74ebd5 0%, #ACB6E5 100%);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+h1 {
+  color: #fff;
+  text-shadow: 1px 2px 8px #0003;
+  letter-spacing: 1px;
+  margin-bottom: 2rem;
+}
+.section {
+  margin-bottom: 1rem;
+}
+.label {
+  font-weight: bold;
+  color: #2d3a4a;
+}
+.value {
+  margin-left: 0.5rem;
+  color: #333;
+}
+.timestamp {
+  color: #888;
+  font-size: 0.95em;
+}
+.card {
+  background: linear-gradient(120deg, #f6d365 0%, #fda085 100%);
+  border-radius: 12px;
+  padding: 1.2rem 1.7rem;
+  box-shadow: 0 4px 16px #0002;
+  margin-bottom: 1.5rem;
+  border: 1px solid #fff3;
+  transition: transform 0.15s;
+}
+.card:hover {
+  transform: translateY(-4px) scale(1.02);
+  box-shadow: 0 8px 32px #0003;
+}
+.card .section {
+  font-size: 1.15em;
+  color: #b06ab3;
+  margin-bottom: 0.7rem;
+}
+@media (max-width: 600px) {
+  .container {
+    padding: 1rem 0.5rem;
+  }
+  .card {
+    padding: 1rem 0.7rem;
+  }
+}

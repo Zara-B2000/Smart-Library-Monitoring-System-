@@ -34,6 +34,7 @@ frontend/
   ```bash
   cd backend
   npm install
+  npm install nodemon --save-dev
   ```
 - Add your Firebase service account key as `backend/serviceAccountKey.json`.
 - Start the backend server:
