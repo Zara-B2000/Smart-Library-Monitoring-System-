@@ -180,6 +180,917 @@ const ZoneRow = ({ name, value }) => {
   );
 };
 
+// ── Study Comfort Tab ─────────────────────────────────────────────────────────
+function StudyComfortTab({ s, h }) {
+  const [scHistory, setScHistory] = useState([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    fetch("/api/history?limit=20")
+      .then(r => r.json())
+      .then(data => { setScHistory(Array.isArray(data) ? data : []); })
+      .catch(() => {})
+      .finally(() => setLoading(false));
+  }, []);
+
+  const noiseColor = s.noise > 65 ? "#f87171" : s.noise > 50 ? "#fbbf24" : "#34d399";
+  const noiseLabel = s.noise > 65 ? "Too Noisy" : s.noise > 50 ? "Moderate" : "Comfortable";
+  const noiseV     = s.noise > 65 ? "red" : s.noise > 50 ? "yellow" : "green";
+  const lightColor = s.light < 250 ? "#f87171" : s.light < 500 ? "#fbbf24" : "#fbbf24";
+  const lightLabel = s.light < 250 ? "Too Dark" : s.light < 500 ? "Dim" : "Well Lit";
+  const lightV     = s.light < 250 ? "red" : s.light < 500 ? "yellow" : "green";
+
+  const chartData = (key) =>
+    scHistory.length
+      ? [...scHistory].reverse().map(r => ({
+          t: r.timestamp ? new Date(r.timestamp).toLocaleTimeString("en-US", { hour: "2-digit", minute: "2-digit", hour12: false }) : "—",
+          v: r[key],
+        }))
+      : h[key === "noise" ? "noise" : "light"];
+
+  return (
+    <>
+      <SectionHead title="Study Comfort — Light & Sound" icon="noise" />
+
+      {/* Live value cards */}
+      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 14 }}>
+
+        {/* Sound Level */}
+        <Card>
+          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 12 }}>
+            <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+              <span style={{ color: noiseColor }}><Ico d={PATHS.noise} size={18} /></span>
+              <span style={{ fontWeight: 700, fontSize: 13, color: "rgba(255,255,255,0.8)" }}>Sound Level</span>
+            </div>
+            <Badge label={noiseLabel} color={noiseV} />
+          </div>
+          <div style={{ display: "flex", alignItems: "center", gap: 20 }}>
+            <RadialGauge value={s.noise} max={100} color={noiseColor} unit="dB" />
+            <div style={{ flex: 1 }}>
+              <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 6 }}>
+                <span style={{ fontSize: 11, color: "rgba(255,255,255,0.35)" }}>Level</span>
+                <span style={{ fontFamily: "'DM Mono',monospace", fontSize: 13, fontWeight: 700, color: noiseColor }}>{s.noise} dB</span>
+              </div>
+              <Bar2 value={s.noise} max={100} color={noiseColor} />
+              {s.noise > 65 && (
+                <div style={{ display: "flex", alignItems: "center", gap: 5, marginTop: 8,
+                  padding: "5px 8px", borderRadius: 7, background: "rgba(248,113,113,0.09)", border: "1px solid rgba(248,113,113,0.18)" }}>
+                  <span style={{ color: "#f87171" }}><Ico d={PATHS.alert} size={12} /></span>
+                  <span style={{ fontSize: 10, color: "#f87171", fontWeight: 700 }}>Noise above comfortable level</span>
+                </div>
+              )}
+            </div>
+          </div>
+        </Card>
+
+        {/* Light Level */}
+        <Card>
+          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 12 }}>
+            <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+              <span style={{ color: lightColor }}><Ico d={PATHS.light} size={18} /></span>
+              <span style={{ fontWeight: 700, fontSize: 13, color: "rgba(255,255,255,0.8)" }}>Light Level</span>
+            </div>
+            <Badge label={lightLabel} color={lightV} />
+          </div>
+          <div style={{ display: "flex", alignItems: "center", gap: 20 }}>
+            <RadialGauge value={s.light} max={1000} color={lightColor} unit="lux" />
+            <div style={{ flex: 1 }}>
+              <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 6 }}>
+                <span style={{ fontSize: 11, color: "rgba(255,255,255,0.35)" }}>Intensity</span>
+                <span style={{ fontFamily: "'DM Mono',monospace", fontSize: 13, fontWeight: 700, color: lightColor }}>{s.light} lx</span>
+              </div>
+              <Bar2 value={s.light} max={1000} color={lightColor} />
+              {s.light < 250 && (
+                <div style={{ display: "flex", alignItems: "center", gap: 5, marginTop: 8,
+                  padding: "5px 8px", borderRadius: 7, background: "rgba(248,113,113,0.09)", border: "1px solid rgba(248,113,113,0.18)" }}>
+                  <span style={{ color: "#f87171" }}><Ico d={PATHS.alert} size={12} /></span>
+                  <span style={{ fontSize: 10, color: "#f87171", fontWeight: 700 }}>Insufficient lighting</span>
+                </div>
+              )}
+            </div>
+          </div>
+        </Card>
+      </div>
+
+      {/* Sound level chart */}
+      <Card>
+        <CardLabel text="Sound Level over Time (dB)" />
+        <div style={{ height: 180 }}>
+          <ResponsiveContainer width="100%" height="100%">
+            <LineChart data={chartData("noise")}>
+              <CartesianGrid strokeDasharray="2 4" stroke="rgba(255,255,255,0.04)" />
+              <XAxis dataKey="t" tick={{ fontSize: 9, fill: "rgba(255,255,255,0.3)" }} axisLine={false} tickLine={false} interval="preserveStartEnd" />
+              <YAxis tick={{ fontSize: 9, fill: "rgba(255,255,255,0.3)" }} axisLine={false} tickLine={false} width={28} unit="dB" />
+              <Tooltip content={<MiniTip />} />
+              <Line type="monotone" dataKey="v" stroke={noiseColor} strokeWidth={2.5} dot={{ r: 3, fill: noiseColor }}
+                style={{ filter: `drop-shadow(0 0 5px ${noiseColor}88)` }} />
+            </LineChart>
+          </ResponsiveContainer>
+        </div>
+      </Card>
+
+      {/* Light level chart */}
+      <Card>
+        <CardLabel text="Light Level over Time (lux)" />
+        <div style={{ height: 180 }}>
+          <ResponsiveContainer width="100%" height="100%">
+            <BarChart data={chartData("light")}>
+              <CartesianGrid strokeDasharray="2 4" stroke="rgba(255,255,255,0.04)" />
+              <XAxis dataKey="t" tick={{ fontSize: 9, fill: "rgba(255,255,255,0.3)" }} axisLine={false} tickLine={false} interval="preserveStartEnd" />
+              <YAxis tick={{ fontSize: 9, fill: "rgba(255,255,255,0.3)" }} axisLine={false} tickLine={false} width={32} unit=" lx" />
+              <Tooltip content={<MiniTip />} />
+              <Bar dataKey="v" fill={`${lightColor}33`} radius={[4, 4, 0, 0]} />
+            </BarChart>
+          </ResponsiveContainer>
+        </div>
+      </Card>
+
+      {/* Historical table */}
+      <Card>
+        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 12 }}>
+          <CardLabel text="Historical Readings Log (Firestore)" />
+          {loading && <span style={{ fontSize: 10, color: "rgba(255,255,255,0.3)" }}>Loading...</span>}
+          {!loading && scHistory.length === 0 && (
+            <span style={{ fontSize: 10, color: "#fbbf24" }}>No records yet</span>
+          )}
+        </div>
+        <div style={{ overflowX: "auto" }}>
+          <table style={{ width: "100%", borderCollapse: "collapse", fontFamily: "'DM Mono',monospace", fontSize: 12 }}>
+            <thead>
+              <tr style={{ borderBottom: "1px solid rgba(255,255,255,0.08)" }}>
+                {["#", "Timestamp", "Sound (dB)", "Light (lux)", "Status"].map(col => (
+                  <th key={col} style={{ padding: "7px 12px", textAlign: "left", fontSize: 10,
+                    color: "rgba(255,255,255,0.35)", fontWeight: 700, letterSpacing: "0.06em",
+                    fontFamily: "'DM Sans',sans-serif" }}>{col}</th>
+                ))}
+              </tr>
+            </thead>
+            <tbody>
+              {scHistory.map((row, i) => {
+                const nC = row.noise > 65 ? "#f87171" : row.noise > 50 ? "#fbbf24" : "#34d399";
+                const lC = row.light < 250 ? "#f87171" : row.light < 500 ? "#fbbf24" : "#fbbf24";
+                const ok = row.noise <= 50 && row.light >= 500;
+                const timeLabel = row.timestamp
+                  ? new Date(row.timestamp).toLocaleString("en-US", { month: "short", day: "numeric", hour: "2-digit", minute: "2-digit", second: "2-digit", hour12: false })
+                  : "—";
+                return (
+                  <tr key={row.id || i} style={{ borderBottom: "1px solid rgba(255,255,255,0.04)",
+                    background: i === 0 ? "rgba(255,255,255,0.03)" : "transparent" }}>
+                    <td style={{ padding: "7px 12px", color: "rgba(255,255,255,0.25)" }}>{scHistory.length - i}</td>
+                    <td style={{ padding: "7px 12px", color: "rgba(255,255,255,0.5)" }}>{timeLabel}</td>
+                    <td style={{ padding: "7px 12px", color: nC, fontWeight: 700 }}>{row.noise ?? "—"}</td>
+                    <td style={{ padding: "7px 12px", color: lC, fontWeight: 700 }}>{row.light ?? "—"}</td>
+                    <td style={{ padding: "7px 12px" }}>
+                      <Badge label={ok ? "Good" : "Needs Attention"} color={ok ? "green" : "yellow"} />
+                    </td>
+                  </tr>
+                );
+              })}
+            </tbody>
+          </table>
+        </div>
+      </Card>
+    </>
+  );
+}
+
+// ── Activity Log Tab ──────────────────────────────────────────────────────────
+const ADMIN_PASSWORD = "12345678";
+
+function ActivityLogTab({ maxOccupancy, setMaxOccupancy, countTolerance, setCountTolerance }) {
+  const [isAdmin, setIsAdmin] = useState(false);
+  const [showLogin, setShowLogin] = useState(false);
+  const [pw, setPw] = useState("");
+  const [pwError, setPwError] = useState("");
+
+  // Notice board state
+  const [notices, setNotices] = useState([
+    { id: 1, title: "Library Closed on Public Holidays", body: "The library will remain closed on all gazetted public holidays. Plan your visits accordingly.", date: "Apr 8, 2026", pinned: true },
+    { id: 2, title: "Silence Policy Reminder", body: "Please maintain noise levels below 50 dB in all study areas. Loud conversations are not permitted.", date: "Apr 7, 2026", pinned: false },
+    { id: 3, title: "Wi-Fi Maintenance Scheduled", body: "Network maintenance is scheduled for Apr 10 from 11 PM – 2 AM. Internet access will be unavailable during this window.", date: "Apr 6, 2026", pinned: false },
+  ]);
+  const [newTitle, setNewTitle] = useState("");
+  const [newBody, setNewBody] = useState("");
+  const [editId, setEditId] = useState(null);
+
+  // Occupancy inputs (local strings; actual values live in parent)
+  const [maxInput, setMaxInput] = useState(String(maxOccupancy));
+  const [tolInput, setTolInput] = useState(String(countTolerance));
+
+  const handleLogin = () => {
+    if (pw === ADMIN_PASSWORD) {
+      setIsAdmin(true);
+      setShowLogin(false);
+      setPw("");
+      setPwError("");
+    } else {
+      setPwError("Incorrect password. Try again.");
+    }
+  };
+
+  const handleAdd = () => {
+    if (!newTitle.trim() || !newBody.trim()) return;
+    const now = new Date().toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" });
+    if (editId !== null) {
+      setNotices(prev => prev.map(n => n.id === editId ? { ...n, title: newTitle, body: newBody } : n));
+      setEditId(null);
+    } else {
+      setNotices(prev => [{ id: Date.now(), title: newTitle, body: newBody, date: now, pinned: false }, ...prev]);
+    }
+    setNewTitle("");
+    setNewBody("");
+  };
+
+  const handleDelete = (id) => setNotices(prev => prev.filter(n => n.id !== id));
+  const handlePin   = (id) => setNotices(prev => prev.map(n => n.id === id ? { ...n, pinned: !n.pinned } : n));
+  const handleEdit  = (n)  => { setEditId(n.id); setNewTitle(n.title); setNewBody(n.body); };
+
+  const handleSetMax = () => {
+    const v = parseInt(maxInput, 10);
+    if (!isNaN(v) && v > 0) setMaxOccupancy(v);
+  };
+
+  const handleSetTolerance = () => {
+    const v = parseInt(tolInput, 10);
+    if (!isNaN(v)) setCountTolerance(v);
+  };
+
+  const sorted = [...notices].sort((a, b) => (b.pinned ? 1 : 0) - (a.pinned ? 1 : 0));
+
+  const inputStyle = {
+    padding: "9px 14px", borderRadius: 9,
+    background: "rgba(255,255,255,0.05)", border: "1px solid rgba(255,255,255,0.12)",
+    color: "white", fontSize: 13, outline: "none", fontFamily: "'DM Sans',sans-serif",
+  };
+
+  return (
+    <>
+      <SectionHead title="Notice Board" icon="book" />
+
+      {/* ── Login / logout strip ── */}
+      {!isAdmin && !showLogin && (
+        <div style={{ display: "flex", justifyContent: "flex-end", marginBottom: 10 }}>
+          <button onClick={() => setShowLogin(true)} style={{
+            display: "flex", alignItems: "center", gap: 7, padding: "8px 18px",
+            background: "rgba(96,165,250,0.12)", border: "1px solid rgba(96,165,250,0.3)",
+            borderRadius: 10, color: "#60a5fa", fontSize: 12, fontWeight: 700,
+            fontFamily: "'DM Sans',sans-serif", cursor: "pointer",
+          }}>
+            <Ico d={PATHS.user} size={14} /> Admin Login
+          </button>
+        </div>
+      )}
+
+      {/* ── Login card ── */}
+      {showLogin && (
+        <Card>
+          <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 16 }}>
+            <span style={{ color: "#60a5fa" }}><Ico d={PATHS.user} size={16} /></span>
+            <span style={{ fontWeight: 700, fontSize: 14, color: "rgba(255,255,255,0.85)" }}>Admin Login</span>
+          </div>
+          <div style={{ display: "flex", flexDirection: "column", gap: 10, maxWidth: 320 }}>
+            <input
+              type="password"
+              placeholder="Enter admin password"
+              value={pw}
+              onChange={e => { setPw(e.target.value); setPwError(""); }}
+              onKeyDown={e => e.key === "Enter" && handleLogin()}
+              style={{ ...inputStyle, fontFamily: "'DM Mono',monospace" }}
+            />
+            {pwError && <span style={{ fontSize: 11, color: "#f87171" }}>{pwError}</span>}
+            <div style={{ display: "flex", gap: 8 }}>
+              <button onClick={handleLogin} style={{
+                flex: 1, padding: "9px", borderRadius: 9,
+                background: "rgba(96,165,250,0.18)", border: "1px solid rgba(96,165,250,0.35)",
+                color: "#60a5fa", fontWeight: 700, fontSize: 13, cursor: "pointer",
+                fontFamily: "'DM Sans',sans-serif",
+              }}>Login</button>
+              <button onClick={() => { setShowLogin(false); setPw(""); setPwError(""); }} style={{
+                flex: 1, padding: "9px", borderRadius: 9,
+                background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.1)",
+                color: "rgba(255,255,255,0.4)", fontWeight: 700, fontSize: 13,
+                cursor: "pointer", fontFamily: "'DM Sans',sans-serif",
+              }}>Cancel</button>
+            </div>
+          </div>
+        </Card>
+      )}
+
+      {/* ══════════════════════════════════════════════════════════════════════
+          ADMIN DASHBOARD — only visible after login
+      ══════════════════════════════════════════════════════════════════════ */}
+      {isAdmin && (
+        <div style={{
+          border: "1px solid rgba(96,165,250,0.3)",
+          borderRadius: 16,
+          padding: 20,
+          marginBottom: 18,
+          background: "rgba(96,165,250,0.04)",
+        }}>
+          {/* Header */}
+          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 20 }}>
+            <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+              <span style={{ color: "#60a5fa" }}><Ico d={PATHS.user} size={18} /></span>
+              <span style={{ fontWeight: 800, fontSize: 15, color: "#60a5fa" }}>Admin Dashboard</span>
+              <span style={{ fontSize: 10, background: "rgba(52,211,153,0.12)", color: "#34d399",
+                border: "1px solid rgba(52,211,153,0.25)", borderRadius: 6, padding: "2px 8px",
+                fontWeight: 700 }}>● ACTIVE</span>
+            </div>
+            <button onClick={() => setIsAdmin(false)} style={{
+              padding: "6px 14px", background: "rgba(248,113,113,0.1)",
+              border: "1px solid rgba(248,113,113,0.25)", borderRadius: 8,
+              color: "#f87171", fontSize: 11, fontWeight: 700, cursor: "pointer",
+              fontFamily: "'DM Sans',sans-serif",
+            }}>Logout</button>
+          </div>
+
+          {/* ── Section 1: Occupancy Max Control ── */}
+          <div style={{
+            border: "1px solid rgba(255,255,255,0.08)", borderRadius: 12,
+            padding: 16, marginBottom: 16, background: "rgba(255,255,255,0.02)",
+          }}>
+            <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 14 }}>
+              <span style={{ color: "#fbbf24" }}><Ico d={PATHS.people} size={15} /></span>
+              <span style={{ fontWeight: 700, fontSize: 13, color: "rgba(255,255,255,0.8)" }}>Current Occupancy — Maximum Limit</span>
+            </div>
+            <div style={{ display: "flex", alignItems: "center", gap: 10, flexWrap: "wrap" }}>
+              <div style={{ display: "flex", alignItems: "center", gap: 6, padding: "8px 14px",
+                background: "rgba(251,191,36,0.08)", border: "1px solid rgba(251,191,36,0.2)",
+                borderRadius: 10 }}>
+                <span style={{ fontSize: 11, color: "rgba(255,255,255,0.4)" }}>Current max:</span>
+                <span style={{ fontFamily: "'DM Mono',monospace", fontSize: 18, fontWeight: 800, color: "#fbbf24" }}>{maxOccupancy}</span>
+                <span style={{ fontSize: 11, color: "rgba(255,255,255,0.35)" }}>persons</span>
+              </div>
+              <input
+                type="number"
+                min={1}
+                max={500}
+                value={maxInput}
+                onChange={e => setMaxInput(e.target.value)}
+                onKeyDown={e => e.key === "Enter" && handleSetMax()}
+                placeholder="New max"
+                style={{ ...inputStyle, width: 100, fontFamily: "'DM Mono',monospace", textAlign: "center" }}
+              />
+              <button onClick={handleSetMax} style={{
+                padding: "9px 18px", borderRadius: 9,
+                background: "rgba(251,191,36,0.15)", border: "1px solid rgba(251,191,36,0.3)",
+                color: "#fbbf24", fontWeight: 700, fontSize: 13, cursor: "pointer",
+                fontFamily: "'DM Sans',sans-serif",
+              }}>Set Limit</button>
+              <span style={{ fontSize: 11, color: "rgba(255,255,255,0.3)", fontStyle: "italic" }}>
+                Alerts will trigger when occupancy exceeds this value.
+              </span>
+            </div>
+          </div>
+
+          {/* ── Section 2: Count Tolerance / Correction ── */}
+          <div style={{
+            border: "1px solid rgba(255,255,255,0.08)", borderRadius: 12,
+            padding: 16, marginBottom: 16, background: "rgba(255,255,255,0.02)",
+          }}>
+            <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 10 }}>
+              <span style={{ color: "#60a5fa" }}><Ico d={PATHS.eye} size={15} /></span>
+              <span style={{ fontWeight: 700, fontSize: 13, color: "rgba(255,255,255,0.8)" }}>Count Correction (Tolerance)</span>
+            </div>
+            <p style={{ fontSize: 11, color: "rgba(255,255,255,0.35)", margin: "0 0 12px",
+              fontFamily: "'DM Sans',sans-serif", lineHeight: 1.6 }}>
+              If the sensor reads a wrong value, set a tolerance offset here.<br />
+              Example: sensor reads <b style={{ color: "rgba(255,255,255,0.6)" }}>5</b>, actual is <b style={{ color: "rgba(255,255,255,0.6)" }}>3</b> → set <b style={{ color: "#60a5fa" }}>−2</b>.
+            </p>
+            <div style={{ display: "flex", alignItems: "center", gap: 10, flexWrap: "wrap" }}>
+              <div style={{ display: "flex", alignItems: "center", gap: 6, padding: "8px 14px",
+                background: "rgba(96,165,250,0.08)", border: "1px solid rgba(96,165,250,0.2)",
+                borderRadius: 10 }}>
+                <span style={{ fontSize: 11, color: "rgba(255,255,255,0.4)" }}>Active offset:</span>
+                <span style={{ fontFamily: "'DM Mono',monospace", fontSize: 18, fontWeight: 800,
+                  color: countTolerance === 0 ? "rgba(255,255,255,0.4)" : countTolerance > 0 ? "#34d399" : "#f87171" }}>
+                  {countTolerance > 0 ? `+${countTolerance}` : countTolerance}
+                </span>
+              </div>
+              <input
+                type="number"
+                value={tolInput}
+                onChange={e => setTolInput(e.target.value)}
+                onKeyDown={e => e.key === "Enter" && handleSetTolerance()}
+                placeholder="e.g. -2"
+                style={{ ...inputStyle, width: 100, fontFamily: "'DM Mono',monospace", textAlign: "center" }}
+              />
+              <button onClick={handleSetTolerance} style={{
+                padding: "9px 18px", borderRadius: 9,
+                background: "rgba(96,165,250,0.15)", border: "1px solid rgba(96,165,250,0.3)",
+                color: "#60a5fa", fontWeight: 700, fontSize: 13, cursor: "pointer",
+                fontFamily: "'DM Sans',sans-serif",
+              }}>Apply</button>
+              {countTolerance !== 0 && (
+                <button onClick={() => { setCountTolerance(0); setTolInput("0"); }} style={{
+                  padding: "9px 14px", borderRadius: 9,
+                  background: "rgba(248,113,113,0.1)", border: "1px solid rgba(248,113,113,0.25)",
+                  color: "#f87171", fontWeight: 700, fontSize: 13, cursor: "pointer",
+                  fontFamily: "'DM Sans',sans-serif",
+                }}>Reset</button>
+              )}
+            </div>
+          </div>
+
+          {/* ── Section 3: Notice Board Controls ── */}
+          <div style={{
+            border: "1px solid rgba(255,255,255,0.08)", borderRadius: 12,
+            padding: 16, background: "rgba(255,255,255,0.02)",
+          }}>
+            <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 14 }}>
+              <span style={{ color: "#fbbf24" }}><Ico d={PATHS.alert} size={15} /></span>
+              <span style={{ fontWeight: 700, fontSize: 13, color: "rgba(255,255,255,0.8)" }}>
+                {editId !== null ? "Edit Notice" : "Post New Notice"}
+              </span>
+            </div>
+            <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+              <input
+                type="text"
+                placeholder="Notice title"
+                value={newTitle}
+                onChange={e => setNewTitle(e.target.value)}
+                style={inputStyle}
+              />
+              <textarea
+                placeholder="Notice content"
+                value={newBody}
+                onChange={e => setNewBody(e.target.value)}
+                rows={3}
+                style={{ ...inputStyle, resize: "vertical" }}
+              />
+              <div style={{ display: "flex", gap: 8 }}>
+                <button onClick={handleAdd} disabled={!newTitle.trim() || !newBody.trim()} style={{
+                  padding: "9px 20px", borderRadius: 9,
+                  background: (!newTitle.trim() || !newBody.trim()) ? "rgba(255,255,255,0.05)" : "rgba(52,211,153,0.15)",
+                  border: `1px solid ${(!newTitle.trim() || !newBody.trim()) ? "rgba(255,255,255,0.1)" : "rgba(52,211,153,0.3)"}`,
+                  color: (!newTitle.trim() || !newBody.trim()) ? "rgba(255,255,255,0.2)" : "#34d399",
+                  fontWeight: 700, fontSize: 13,
+                  cursor: (!newTitle.trim() || !newBody.trim()) ? "default" : "pointer",
+                  fontFamily: "'DM Sans',sans-serif",
+                }}>{editId !== null ? "Save Changes" : "Post Notice"}</button>
+                {editId !== null && (
+                  <button onClick={() => { setEditId(null); setNewTitle(""); setNewBody(""); }} style={{
+                    padding: "9px 16px", borderRadius: 9,
+                    background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.1)",
+                    color: "rgba(255,255,255,0.4)", fontWeight: 700, fontSize: 13,
+                    cursor: "pointer", fontFamily: "'DM Sans',sans-serif",
+                  }}>Cancel</button>
+                )}
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ══ Notice Board (public view, always visible) ══ */}
+      <div style={{
+        border: "1px solid rgba(255,255,255,0.1)",
+        borderRadius: 16,
+        padding: 18,
+        background: "rgba(255,255,255,0.01)",
+      }}>
+        <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 16,
+          paddingBottom: 12, borderBottom: "1px solid rgba(255,255,255,0.07)" }}>
+          <span style={{ color: "#fbbf24" }}><Ico d={PATHS.book} size={16} /></span>
+          <span style={{ fontWeight: 800, fontSize: 14, color: "rgba(255,255,255,0.85)",
+            letterSpacing: "0.04em", fontFamily: "'DM Sans',sans-serif" }}>NOTICE BOARD</span>
+          <span style={{ fontSize: 11, background: "rgba(255,255,255,0.06)", color: "rgba(255,255,255,0.35)",
+            borderRadius: 6, padding: "2px 8px", fontWeight: 700 }}>{sorted.length} notices</span>
+        </div>
+
+        <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
+          {sorted.map(n => (
+            <div key={n.id} style={{
+              padding: 14, borderRadius: 12,
+              border: n.pinned ? "1px solid rgba(251,191,36,0.3)" : "1px solid rgba(255,255,255,0.07)",
+              background: n.pinned ? "rgba(251,191,36,0.04)" : "rgba(255,255,255,0.02)",
+            }}>
+              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 8 }}>
+                <div style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap" }}>
+                  {n.pinned && (
+                    <span style={{ fontSize: 10, background: "rgba(251,191,36,0.12)", color: "#fbbf24",
+                      border: "1px solid rgba(251,191,36,0.25)", borderRadius: 6, padding: "2px 8px",
+                      fontWeight: 700, fontFamily: "'DM Sans',sans-serif" }}>📌 PINNED</span>
+                  )}
+                  <span style={{ fontWeight: 700, fontSize: 13, color: "rgba(255,255,255,0.9)",
+                    fontFamily: "'DM Sans',sans-serif" }}>{n.title}</span>
+                </div>
+                <div style={{ display: "flex", alignItems: "center", gap: 6, flexShrink: 0 }}>
+                  <span style={{ fontSize: 10, color: "rgba(255,255,255,0.3)",
+                    fontFamily: "'DM Mono',monospace" }}>{n.date}</span>
+                  {isAdmin && (
+                    <>
+                      <button onClick={() => handlePin(n.id)} title={n.pinned ? "Unpin" : "Pin"} style={{
+                        background: "none", border: "none", cursor: "pointer", padding: "2px 5px",
+                        color: n.pinned ? "#fbbf24" : "rgba(255,255,255,0.3)", fontSize: 14,
+                      }}>📌</button>
+                      <button onClick={() => handleEdit(n)} style={{
+                        background: "none", border: "none", cursor: "pointer", padding: "2px 5px",
+                        color: "#60a5fa", fontSize: 14,
+                      }}>✎</button>
+                      <button onClick={() => handleDelete(n.id)} style={{
+                        background: "none", border: "none", cursor: "pointer", padding: "2px 5px",
+                        color: "#f87171", fontSize: 14,
+                      }}>✕</button>
+                    </>
+                  )}
+                </div>
+              </div>
+              <p style={{ fontSize: 12, color: "rgba(255,255,255,0.5)", lineHeight: 1.65, margin: 0,
+                fontFamily: "'DM Sans',sans-serif" }}>{n.body}</p>
+            </div>
+          ))}
+
+          {sorted.length === 0 && (
+            <p style={{ textAlign: "center", color: "rgba(255,255,255,0.2)", fontSize: 13,
+              fontFamily: "'DM Sans',sans-serif", margin: "20px 0" }}>No notices posted yet.</p>
+          )}
+        </div>
+      </div>
+    </>
+  );
+}
+
+// ── Zones & Net Tab ───────────────────────────────────────────────────────────
+function ZonesTab({ s, h }) {
+  const [zHistory, setZHistory] = useState([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    fetch("/api/history?limit=20")
+      .then(r => r.json())
+      .then(data => { setZHistory(Array.isArray(data) ? data : []); })
+      .catch(() => {})
+      .finally(() => setLoading(false));
+  }, []);
+
+  // Colors/labels for Traffic Level (0–100 %)
+  const tlv = s.traffic_level ?? 0;
+  const tlColor = tlv >= 80 ? "#f87171" : tlv >= 50 ? "#fbbf24" : "#34d399";
+  const tlLabel = tlv >= 80 ? "Congested" : tlv >= 50 ? "Moderate" : "Low";
+  const tlV     = tlv >= 80 ? "red"       : tlv >= 50 ? "yellow"   : "green";
+
+  // Colors/labels for Network Speed (0–500 Mbps)
+  const spd = s.speed ?? 0;
+  const spdColor = spd < 50 ? "#f87171" : spd < 150 ? "#fbbf24" : "#34d399";
+  const spdLabel = spd < 50 ? "Slow" : spd < 150 ? "Fair" : "Fast";
+  const spdV     = spd < 50 ? "red"  : spd < 150 ? "yellow" : "green";
+
+  // Colors/labels for Latency (ms) — lower is better
+  const lat = s.latency ?? 0;
+  const latColor = lat > 60 ? "#f87171" : lat > 30 ? "#fbbf24" : "#34d399";
+  const latLabel = lat > 60 ? "High" : lat > 30 ? "Moderate" : "Low";
+  const latV     = lat > 60 ? "red"  : lat > 30 ? "yellow"   : "green";
+
+  // Build chart data — prefer Firestore history, fall back to in-memory rolling
+  const chartData = (key, fallbackKey) =>
+    zHistory.length
+      ? [...zHistory].reverse().map(r => ({
+          t: r.timestamp
+            ? new Date(r.timestamp).toLocaleTimeString("en-US", { hour: "2-digit", minute: "2-digit", hour12: false })
+            : "—",
+          v: r[key],
+        }))
+      : (h[fallbackKey] || []);
+
+  return (
+    <>
+      <SectionHead title="Zones & Network" icon="signal" />
+
+      {/* Live metric cards — 3 equal columns */}
+      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 14 }}>
+
+        {/* Traffic Level */}
+        <Card>
+          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 12 }}>
+            <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+              <span style={{ color: tlColor }}><Ico d={PATHS.signal} size={18} /></span>
+              <span style={{ fontWeight: 700, fontSize: 13, color: "rgba(255,255,255,0.8)" }}>Traffic Level</span>
+            </div>
+            <Badge label={tlLabel} color={tlV} />
+          </div>
+          <div style={{ display: "flex", alignItems: "center", gap: 20 }}>
+            <RadialGauge value={tlv} max={100} color={tlColor} unit="%" />
+            <div style={{ flex: 1 }}>
+              <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 6 }}>
+                <span style={{ fontSize: 11, color: "rgba(255,255,255,0.35)" }}>Load</span>
+                <span style={{ fontFamily: "'DM Mono',monospace", fontSize: 13, fontWeight: 700, color: tlColor }}>{tlv}%</span>
+              </div>
+              <Bar2 value={tlv} max={100} color={tlColor} />
+              {tlv >= 80 && (
+                <div style={{ display: "flex", alignItems: "center", gap: 5, marginTop: 8,
+                  padding: "5px 8px", borderRadius: 7, background: "rgba(248,113,113,0.09)", border: "1px solid rgba(248,113,113,0.18)" }}>
+                  <span style={{ color: "#f87171" }}><Ico d={PATHS.alert} size={12} /></span>
+                  <span style={{ fontSize: 10, color: "#f87171", fontWeight: 700 }}>Network heavily loaded</span>
+                </div>
+              )}
+            </div>
+          </div>
+        </Card>
+
+        {/* Network Speed */}
+        <Card>
+          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 12 }}>
+            <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+              <span style={{ color: spdColor }}><Ico d={PATHS.wifi} size={18} /></span>
+              <span style={{ fontWeight: 700, fontSize: 13, color: "rgba(255,255,255,0.8)" }}>Network Speed</span>
+            </div>
+            <Badge label={spdLabel} color={spdV} />
+          </div>
+          <div style={{ display: "flex", alignItems: "center", gap: 20 }}>
+            <RadialGauge value={spd} max={500} color={spdColor} unit="Mbps" />
+            <div style={{ flex: 1 }}>
+              <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 6 }}>
+                <span style={{ fontSize: 11, color: "rgba(255,255,255,0.35)" }}>Speed</span>
+                <span style={{ fontFamily: "'DM Mono',monospace", fontSize: 13, fontWeight: 700, color: spdColor }}>{spd} Mbps</span>
+              </div>
+              <Bar2 value={spd} max={500} color={spdColor} />
+              {spd < 50 && (
+                <div style={{ display: "flex", alignItems: "center", gap: 5, marginTop: 8,
+                  padding: "5px 8px", borderRadius: 7, background: "rgba(248,113,113,0.09)", border: "1px solid rgba(248,113,113,0.18)" }}>
+                  <span style={{ color: "#f87171" }}><Ico d={PATHS.alert} size={12} /></span>
+                  <span style={{ fontSize: 10, color: "#f87171", fontWeight: 700 }}>Speed critically low</span>
+                </div>
+              )}
+            </div>
+          </div>
+        </Card>
+
+        {/* Network Latency */}
+        <Card>
+          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 12 }}>
+            <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+              <span style={{ color: latColor }}><Ico d={PATHS.clock} size={18} /></span>
+              <span style={{ fontWeight: 700, fontSize: 13, color: "rgba(255,255,255,0.8)" }}>Network Latency</span>
+            </div>
+            <Badge label={latLabel} color={latV} />
+          </div>
+          <div style={{ display: "flex", alignItems: "center", gap: 20 }}>
+            <RadialGauge value={lat} max={120} color={latColor} unit="ms" />
+            <div style={{ flex: 1 }}>
+              <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 6 }}>
+                <span style={{ fontSize: 11, color: "rgba(255,255,255,0.35)" }}>Ping</span>
+                <span style={{ fontFamily: "'DM Mono',monospace", fontSize: 13, fontWeight: 700, color: latColor }}>{lat} ms</span>
+              </div>
+              <Bar2 value={lat} max={120} color={latColor} />
+              {lat > 60 && (
+                <div style={{ display: "flex", alignItems: "center", gap: 5, marginTop: 8,
+                  padding: "5px 8px", borderRadius: 7, background: "rgba(248,113,113,0.09)", border: "1px solid rgba(248,113,113,0.18)" }}>
+                  <span style={{ color: "#f87171" }}><Ico d={PATHS.alert} size={12} /></span>
+                  <span style={{ fontSize: 10, color: "#f87171", fontWeight: 700 }}>High latency detected</span>
+                </div>
+              )}
+            </div>
+          </div>
+        </Card>
+      </div>
+
+      {/* Charts row: Traffic + Speed */}
+      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 14 }}>
+        <Card>
+          <CardLabel text="Traffic Level over Time (%)" />
+          <div style={{ height: 180 }}>
+            <ResponsiveContainer width="100%" height="100%">
+              <BarChart data={chartData("traffic_level", "speed")}>
+                <CartesianGrid strokeDasharray="2 4" stroke="rgba(255,255,255,0.04)" />
+                <XAxis dataKey="t" tick={{ fontSize: 9, fill: "rgba(255,255,255,0.3)" }} axisLine={false} tickLine={false} interval="preserveStartEnd" />
+                <YAxis tick={{ fontSize: 9, fill: "rgba(255,255,255,0.3)" }} axisLine={false} tickLine={false} width={28} unit="%" domain={[0, 100]} />
+                <Tooltip content={<MiniTip />} />
+                <Bar dataKey="v" fill={`${tlColor}33`} radius={[4, 4, 0, 0]} />
+              </BarChart>
+            </ResponsiveContainer>
+          </div>
+        </Card>
+
+        <Card>
+          <CardLabel text="Network Speed over Time (Mbps)" />
+          <div style={{ height: 180 }}>
+            <ResponsiveContainer width="100%" height="100%">
+              <LineChart data={chartData("speed", "speed")}>
+                <CartesianGrid strokeDasharray="2 4" stroke="rgba(255,255,255,0.04)" />
+                <XAxis dataKey="t" tick={{ fontSize: 9, fill: "rgba(255,255,255,0.3)" }} axisLine={false} tickLine={false} interval="preserveStartEnd" />
+                <YAxis tick={{ fontSize: 9, fill: "rgba(255,255,255,0.3)" }} axisLine={false} tickLine={false} width={36} unit=" Mbps" />
+                <Tooltip content={<MiniTip />} />
+                <Line type="monotone" dataKey="v" stroke={spdColor} strokeWidth={2.5} dot={{ r: 3, fill: spdColor }}
+                  style={{ filter: `drop-shadow(0 0 5px ${spdColor}88)` }} />
+              </LineChart>
+            </ResponsiveContainer>
+          </div>
+        </Card>
+      </div>
+
+      {/* Latency chart full width */}
+      <Card>
+        <CardLabel text="Network Latency over Time (ms)" />
+        <div style={{ height: 180 }}>
+          <ResponsiveContainer width="100%" height="100%">
+            <LineChart data={chartData("latency", "latency")}>
+              <CartesianGrid strokeDasharray="2 4" stroke="rgba(255,255,255,0.04)" />
+              <XAxis dataKey="t" tick={{ fontSize: 9, fill: "rgba(255,255,255,0.3)" }} axisLine={false} tickLine={false} interval="preserveStartEnd" />
+              <YAxis tick={{ fontSize: 9, fill: "rgba(255,255,255,0.3)" }} axisLine={false} tickLine={false} width={32} unit=" ms" />
+              <Tooltip content={<MiniTip />} />
+              <Line type="monotone" dataKey="v" stroke={latColor} strokeWidth={2.5} dot={{ r: 3, fill: latColor }}
+                style={{ filter: `drop-shadow(0 0 5px ${latColor}88)` }} />
+            </LineChart>
+          </ResponsiveContainer>
+        </div>
+      </Card>
+
+      {/* Historical table */}
+      <Card>
+        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 12 }}>
+          <CardLabel text="Historical Network Log (Firestore)" />
+          {loading && <span style={{ fontSize: 10, color: "rgba(255,255,255,0.3)" }}>Loading...</span>}
+          {!loading && zHistory.length === 0 && (
+            <span style={{ fontSize: 10, color: "#fbbf24" }}>No records yet</span>
+          )}
+        </div>
+        <div style={{ overflowX: "auto" }}>
+          <table style={{ width: "100%", borderCollapse: "collapse", fontFamily: "'DM Mono',monospace", fontSize: 12 }}>
+            <thead>
+              <tr style={{ borderBottom: "1px solid rgba(255,255,255,0.08)" }}>
+                {["#", "Timestamp", "Traffic (%)", "Speed (Mbps)", "Latency (ms)", "Status"].map(col => (
+                  <th key={col} style={{ padding: "7px 12px", textAlign: "left", fontSize: 10,
+                    color: "rgba(255,255,255,0.35)", fontWeight: 700, letterSpacing: "0.06em",
+                    fontFamily: "'DM Sans',sans-serif" }}>{col}</th>
+                ))}
+              </tr>
+            </thead>
+            <tbody>
+              {zHistory.map((row, i) => {
+                const tC = (row.traffic_level ?? 0) >= 80 ? "#f87171" : (row.traffic_level ?? 0) >= 50 ? "#fbbf24" : "#34d399";
+                const sC = (row.speed ?? 0) < 50 ? "#f87171" : (row.speed ?? 0) < 150 ? "#fbbf24" : "#34d399";
+                const lC = (row.latency ?? 0) > 60 ? "#f87171" : (row.latency ?? 0) > 30 ? "#fbbf24" : "#34d399";
+                const ok = (row.traffic_level ?? 0) < 80 && (row.speed ?? 0) >= 150 && (row.latency ?? 0) <= 30;
+                const timeLabel = row.timestamp
+                  ? new Date(row.timestamp).toLocaleString("en-US", { month: "short", day: "numeric", hour: "2-digit", minute: "2-digit", second: "2-digit", hour12: false })
+                  : "—";
+                return (
+                  <tr key={row.id || i} style={{ borderBottom: "1px solid rgba(255,255,255,0.04)",
+                    background: i === 0 ? "rgba(255,255,255,0.03)" : "transparent" }}>
+                    <td style={{ padding: "7px 12px", color: "rgba(255,255,255,0.25)" }}>{zHistory.length - i}</td>
+                    <td style={{ padding: "7px 12px", color: "rgba(255,255,255,0.5)" }}>{timeLabel}</td>
+                    <td style={{ padding: "7px 12px", color: tC, fontWeight: 700 }}>{row.traffic_level ?? "—"}</td>
+                    <td style={{ padding: "7px 12px", color: sC, fontWeight: 700 }}>{row.speed ?? "—"}</td>
+                    <td style={{ padding: "7px 12px", color: lC, fontWeight: 700 }}>{row.latency ?? "—"}</td>
+                    <td style={{ padding: "7px 12px" }}>
+                      <Badge label={ok ? "Optimal" : "Degraded"} color={ok ? "green" : "yellow"} />
+                    </td>
+                  </tr>
+                );
+              })}
+            </tbody>
+          </table>
+        </div>
+      </Card>
+    </>
+  );
+}
+
+// ── Access Tab ────────────────────────────────────────────────────────────────
+function AccessTab({ s, maxOccupancy, countTolerance }) {
+  const [accessLog, setAccessLog] = useState([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    const fetchLog = () => {
+      fetch("/api/access-log?limit=30")
+        .then(r => r.json())
+        .then(data => { setAccessLog(Array.isArray(data) ? data : []); })
+        .catch(() => {})
+        .finally(() => setLoading(false));
+    };
+    fetchLog();
+    const id = setInterval(fetchLog, 5000);
+    return () => clearInterval(id);
+  }, []);
+
+  const adjCount = Math.max(0, (s.count ?? 0) + countTolerance);
+  const countColor = adjCount >= maxOccupancy * 0.8 ? "#f87171" : adjCount >= maxOccupancy * 0.5 ? "#fbbf24" : "#34d399";
+  const countV = adjCount >= maxOccupancy * 0.8 ? "red" : adjCount >= maxOccupancy * 0.5 ? "yellow" : "green";
+  const libColor = s.is_librarian ? "#34d399" : "#f87171";
+
+  const TYPE_META = {
+    ENTRY:         { label: "Entry",          color: "#34d399", icon: PATHS.entry },
+    EXIT:          { label: "Exit",           color: "#f87171", icon: PATHS.exit  },
+    LIBRARIAN_IN:  { label: "Librarian In",   color: "#818cf8", icon: PATHS.user  },
+    LIBRARIAN_OUT: { label: "Librarian Out",  color: "#fbbf24", icon: PATHS.user  },
+  };
+
+  return (
+    <>
+      <SectionHead title="Access & Occupancy" icon="people" />
+
+      {/* Top row: count + librarian */}
+      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 14 }}>
+
+        {/* Occupancy count */}
+        <Card>
+          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 12 }}>
+            <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+              <span style={{ color: countColor }}><Ico d={PATHS.people} size={18} /></span>
+              <span style={{ fontWeight: 700, fontSize: 13, color: "rgba(255,255,255,0.8)" }}>Current Occupancy</span>
+            </div>
+            <Badge label={adjCount >= maxOccupancy * 0.8 ? "Crowded" : adjCount >= maxOccupancy * 0.5 ? "Moderate" : "Low"} color={countV} />
+          </div>
+          <div style={{ textAlign: "center", margin: "12px 0" }}>
+            <span style={{ fontFamily: "'DM Mono',monospace", fontSize: 72, fontWeight: 800,
+              color: countColor, lineHeight: 1, textShadow: `0 0 30px ${countColor}55` }}>
+              {adjCount}
+            </span>
+            <div style={{ fontSize: 12, color: "rgba(255,255,255,0.35)", marginTop: 4 }}>people inside</div>
+            {countTolerance !== 0 && (
+              <div style={{ fontSize: 10, marginTop: 4, color: "rgba(255,255,255,0.3)", fontFamily: "'DM Mono',monospace" }}>
+                raw {s.count} {countTolerance > 0 ? "+" : ""}{countTolerance} offset
+              </div>
+            )}
+          </div>
+          <Bar2 value={adjCount} max={maxOccupancy} color={countColor} h={8} />
+          <div style={{ display: "flex", justifyContent: "space-between", marginTop: 6 }}>
+            <span style={{ fontSize: 10, color: "rgba(255,255,255,0.25)" }}>0</span>
+            <span style={{ fontSize: 10, color: "rgba(255,255,255,0.25)" }}>Max {maxOccupancy}</span>
+          </div>
+        </Card>
+
+        {/* Librarian status */}
+        <Card>
+          <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 16 }}>
+            <span style={{ color: libColor }}><Ico d={PATHS.user} size={18} /></span>
+            <span style={{ fontWeight: 700, fontSize: 13, color: "rgba(255,255,255,0.8)" }}>Librarian Status</span>
+          </div>
+          <div style={{ display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center",
+            padding: "24px 0", gap: 14 }}>
+            <div style={{ width: 80, height: 80, borderRadius: "50%", display: "flex",
+              alignItems: "center", justifyContent: "center",
+              background: s.is_librarian ? "rgba(52,211,153,0.12)" : "rgba(248,113,113,0.12)",
+              border: `2px solid ${libColor}44`,
+              boxShadow: `0 0 24px ${libColor}33` }}>
+              <Ico d={PATHS.user} size={36} sw={1.5} />
+            </div>
+            <Badge label={s.is_librarian ? "Librarian Present" : "Librarian Not Present"} color={s.is_librarian ? "green" : "red"} />
+          </div>
+          <div style={{ padding: "10px 14px", borderRadius: 10, textAlign: "center",
+            background: s.is_librarian ? "rgba(52,211,153,0.07)" : "rgba(248,113,113,0.07)",
+            border: `1px solid ${libColor}22` }}>
+            <span style={{ fontSize: 11, color: "rgba(255,255,255,0.4)" }}>
+              {s.is_librarian ? "Library is supervised" : "Library is unsupervised"}
+            </span>
+          </div>
+        </Card>
+      </div>
+
+      {/* Access event log */}
+      <Card>
+        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 14 }}>
+          <CardLabel text="Entry / Exit Event Log (Firestore)" />
+          {loading && <span style={{ fontSize: 10, color: "rgba(255,255,255,0.3)" }}>Loading...</span>}
+          {!loading && accessLog.length === 0 && (
+            <span style={{ fontSize: 10, color: "#fbbf24" }}>No events yet — logged only when count changes</span>
+          )}
+        </div>
+        <div style={{ overflowX: "auto" }}>
+          <table style={{ width: "100%", borderCollapse: "collapse", fontFamily: "'DM Mono',monospace", fontSize: 12 }}>
+            <thead>
+              <tr style={{ borderBottom: "1px solid rgba(255,255,255,0.08)" }}>
+                {["#", "Timestamp", "Event", "Count After", "Librarian"].map(col => (
+                  <th key={col} style={{ padding: "7px 12px", textAlign: "left", fontSize: 10,
+                    color: "rgba(255,255,255,0.35)", fontWeight: 700, letterSpacing: "0.06em",
+                    fontFamily: "'DM Sans',sans-serif" }}>{col}</th>
+                ))}
+              </tr>
+            </thead>
+            <tbody>
+              {accessLog.map((row, i) => {
+                const meta = TYPE_META[row.type] || { label: row.type, color: "#818cf8", icon: PATHS.clock };
+                const timeLabel = row.timestamp
+                  ? new Date(row.timestamp).toLocaleString("en-US", { month: "short", day: "numeric", hour: "2-digit", minute: "2-digit", second: "2-digit", hour12: false })
+                  : "—";
+                return (
+                  <tr key={row.id || i} style={{ borderBottom: "1px solid rgba(255,255,255,0.04)",
+                    background: i === 0 ? "rgba(255,255,255,0.03)" : "transparent" }}>
+                    <td style={{ padding: "7px 12px", color: "rgba(255,255,255,0.25)" }}>{accessLog.length - i}</td>
+                    <td style={{ padding: "7px 12px", color: "rgba(255,255,255,0.5)" }}>{timeLabel}</td>
+                    <td style={{ padding: "7px 12px" }}>
+                      <div style={{ display: "flex", alignItems: "center", gap: 7 }}>
+                        <span style={{ color: meta.color }}><Ico d={meta.icon} size={13} /></span>
+                        <span style={{ color: meta.color, fontWeight: 700 }}>{meta.label}</span>
+                      </div>
+                    </td>
+                    <td style={{ padding: "7px 12px", color: "white", fontWeight: 700 }}>{row.count ?? "—"}</td>
+                    <td style={{ padding: "7px 12px" }}>
+                      <Badge label={row.is_librarian ? "Present" : "Absent"} color={row.is_librarian ? "green" : "red"} />
+                    </td>
+                  </tr>
+                );
+              })}
+            </tbody>
+          </table>
+        </div>
+      </Card>
+    </>
+  );
+}
+
 // ── Main ──────────────────────────────────────────────────────────────────────
 export default function LibraryIoTDashboard() {
   const [sensor, setSensor] = useState(null);
@@ -190,6 +1101,21 @@ export default function LibraryIoTDashboard() {
     temp: [], humidity: [], aq: [], noise: [], latency: [], light: [], speed: []
   });
   const [useSimulated, setUseSimulated] = useState(false);
+  const [firestoreHistory, setFirestoreHistory] = useState([]);
+  const [historyLoading, setHistoryLoading] = useState(false);
+  const [maxOccupancy, setMaxOccupancy] = useState(50);
+  const [countTolerance, setCountTolerance] = useState(0);
+
+  // Fetch Firestore history when Comfort tab is opened
+  useEffect(() => {
+    if (activeNav !== "comfort") return;
+    setHistoryLoading(true);
+    fetch("/api/history?limit=20")
+      .then(r => r.json())
+      .then(data => { setFirestoreHistory(Array.isArray(data) ? data : []); })
+      .catch(() => {})
+      .finally(() => setHistoryLoading(false));
+  }, [activeNav]);
 
   // Helper to update simulated data
   const updateSimulated = () => {
@@ -210,14 +1136,15 @@ export default function LibraryIoTDashboard() {
     });
     setHistory(prev => {
       const s = sensor || initSensor();
+      const t = new Date().toLocaleTimeString("en-US", { hour: "2-digit", minute: "2-digit", second: "2-digit", hour12: false });
       return {
-        temp: [...prev.temp.slice(-11), { t: "•", v: s.temperature }],
-        humidity: [...prev.humidity.slice(-11), { t: "•", v: s.humidity }],
-        aq: [...prev.aq.slice(-11), { t: "•", v: s.airQuality }],
-        noise: [...prev.noise.slice(-11), { t: "•", v: s.noise }],
-        latency: [...prev.latency.slice(-11), { t: "•", v: s.latency }],
-        light: [...prev.light.slice(-11), { t: "•", v: s.light }],
-        speed: [...prev.speed.slice(-11), { t: "•", v: s.speed }],
+        temp: [...prev.temp.slice(-19), { t, v: s.temperature }],
+        humidity: [...prev.humidity.slice(-19), { t, v: s.humidity }],
+        aq: [...prev.aq.slice(-19), { t, v: s.airQuality }],
+        noise: [...prev.noise.slice(-19), { t, v: s.noise }],
+        latency: [...prev.latency.slice(-19), { t, v: s.latency }],
+        light: [...prev.light.slice(-19), { t, v: s.light }],
+        speed: [...prev.speed.slice(-19), { t, v: s.speed }],
       };
     });
   };
@@ -242,14 +1169,15 @@ export default function LibraryIoTDashboard() {
             speed: data.activity.speed,
             traffic_level: data.activity.traffic_level,
           });
+          const t = new Date().toLocaleTimeString("en-US", { hour: "2-digit", minute: "2-digit", second: "2-digit", hour12: false });
           setHistory(prev => ({
-            temp: [...prev.temp.slice(-11), { t: "•", v: data.environment.temperature }],
-            humidity: [...prev.humidity.slice(-11), { t: "•", v: data.environment.humidity }],
-            aq: [...prev.aq.slice(-11), { t: "•", v: data.environment.airQuality }],
-            noise: [...prev.noise.slice(-11), { t: "•", v: data.comfort.noise }],
-            latency: [...prev.latency.slice(-11), { t: "•", v: data.activity.latency }],
-            light: [...prev.light.slice(-11), { t: "•", v: data.comfort.light }],
-            speed: [...prev.speed.slice(-11), { t: "•", v: data.activity.speed }],
+            temp: [...prev.temp.slice(-19), { t, v: data.environment.temperature }],
+            humidity: [...prev.humidity.slice(-19), { t, v: data.environment.humidity }],
+            aq: [...prev.aq.slice(-19), { t, v: data.environment.airQuality }],
+            noise: [...prev.noise.slice(-19), { t, v: data.comfort.noise }],
+            latency: [...prev.latency.slice(-19), { t, v: data.activity.latency }],
+            light: [...prev.light.slice(-19), { t, v: data.comfort.light }],
+            speed: [...prev.speed.slice(-19), { t, v: data.activity.speed }],
           }));
         } catch (e) {
           setUseSimulated(true);
@@ -310,9 +1238,9 @@ export default function LibraryIoTDashboard() {
 
   const NAV = [
     { id: "dashboard", icon: "grid",     label: "Dashboard" },
-    { id: "comfort",   icon: "light",    label: "Comfort" },
-    { id: "access",    icon: "people",   label: "Access" },
-    { id: "env",       icon: "wind",     label: "Environment" },
+    { id: "comfort",   icon: "light",    label: "Environment Comfort" },
+    { id: "access",    icon: "people",   label: "Count & Access" },
+    { id: "env",       icon: "noise",    label: "Study Comfort" },
     { id: "zones",     icon: "signal",   label: "Zones & Net" },
     { id: "activity",  icon: "activity", label: "Activity Log" },
   ];
@@ -435,7 +1363,202 @@ export default function LibraryIoTDashboard() {
         <main style={{ flex: 1, overflowY: "auto", overflowX: "hidden", padding: "16px 18px 24px",
           display: "flex", flexDirection: "column", gap: 16 }}>
 
+          {/* ══ COMFORT TAB ═══════════════════════════════════════════════════ */}
+          {activeNav === "comfort" && (
+            <>
+              <SectionHead title="Comfort — Real-Time Monitoring" icon="light" />
+
+              {/* Top row: 3 live value cards */}
+              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 14 }}>
+
+                {/* Temperature */}
+                <Card>
+                  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 10 }}>
+                    <div style={{ display: "flex", alignItems: "center", gap: 7 }}>
+                      <span style={{ color: tempColor }}><Ico d={PATHS.temp} size={16} /></span>
+                      <span style={{ fontWeight: 700, fontSize: 13, color: "rgba(255,255,255,0.75)" }}>Temperature</span>
+                    </div>
+                    <Badge label={s.temperature > 30 ? "HIGH" : "Normal"} color={tempV} />
+                  </div>
+                  <div style={{ textAlign: "center", margin: "8px 0" }}>
+                    <span style={{ fontFamily: "'DM Mono',monospace", fontSize: 52, fontWeight: 800,
+                      color: tempColor, lineHeight: 1, textShadow: `0 0 24px ${tempColor}44` }}>
+                      {typeof s.temperature === "number" ? s.temperature.toFixed(1) : s.temperature}
+                    </span>
+                    <sup style={{ fontSize: 18, color: "rgba(255,255,255,0.35)", fontFamily: "'DM Sans',sans-serif" }}>°C</sup>
+                  </div>
+                  <Bar2 value={s.temperature} max={40} color={tempColor} />
+                  {s.temperature > 30 && (
+                    <div style={{ display: "flex", alignItems: "center", gap: 6, marginTop: 10,
+                      padding: "6px 10px", borderRadius: 8,
+                      background: "rgba(248,113,113,0.09)", border: "1px solid rgba(248,113,113,0.18)" }}>
+                      <span style={{ color: "#f87171" }}><Ico d={PATHS.alert} size={13} /></span>
+                      <span style={{ fontSize: 10, color: "#f87171", fontWeight: 700 }}>Above comfortable threshold</span>
+                    </div>
+                  )}
+                </Card>
+
+                {/* Humidity */}
+                <Card>
+                  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 10 }}>
+                    <div style={{ display: "flex", alignItems: "center", gap: 7 }}>
+                      <span style={{ color: humColor }}><Ico d={PATHS.drop} size={16} /></span>
+                      <span style={{ fontWeight: 700, fontSize: 13, color: "rgba(255,255,255,0.75)" }}>Humidity</span>
+                    </div>
+                    <Badge label={s.humidity > 70 ? "HIGH" : "Normal"} color={humV} />
+                  </div>
+                  <div style={{ textAlign: "center", margin: "8px 0" }}>
+                    <span style={{ fontFamily: "'DM Mono',monospace", fontSize: 52, fontWeight: 800,
+                      color: humColor, lineHeight: 1, textShadow: `0 0 24px ${humColor}44` }}>
+                      {s.humidity}
+                    </span>
+                    <sup style={{ fontSize: 18, color: "rgba(255,255,255,0.35)", fontFamily: "'DM Sans',sans-serif" }}>%</sup>
+                  </div>
+                  <Bar2 value={s.humidity} max={100} color={humColor} />
+                  {s.humidity > 70 && (
+                    <div style={{ display: "flex", alignItems: "center", gap: 6, marginTop: 10,
+                      padding: "6px 10px", borderRadius: 8,
+                      background: "rgba(251,191,36,0.09)", border: "1px solid rgba(251,191,36,0.18)" }}>
+                      <span style={{ color: "#fbbf24" }}><Ico d={PATHS.alert} size={13} /></span>
+                      <span style={{ fontSize: 10, color: "#fbbf24", fontWeight: 700 }}>High humidity detected</span>
+                    </div>
+                  )}
+                </Card>
+
+                {/* Smoke Detection */}
+                <Card>
+                  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 10 }}>
+                    <div style={{ display: "flex", alignItems: "center", gap: 7 }}>
+                      <span style={{ color: aqColor }}><Ico d={PATHS.alert} size={16} /></span>
+                      <span style={{ fontWeight: 700, fontSize: 13, color: "rgba(255,255,255,0.75)" }}>Smoke Detection</span>
+                    </div>
+                    <Badge label={aqLabel} color={aqV} />
+                  </div>
+                  <div style={{ textAlign: "center", margin: "8px 0" }}>
+                    <span style={{ fontFamily: "'DM Mono',monospace", fontSize: 52, fontWeight: 800,
+                      color: aqColor, lineHeight: 1, textShadow: `0 0 24px ${aqColor}44` }}>
+                      {s.airQuality}
+                    </span>
+                    <sup style={{ fontSize: 12, color: "rgba(255,255,255,0.35)", fontFamily: "'DM Sans',sans-serif", marginLeft: 4 }}>ppm</sup>
+                  </div>
+                  <Bar2 value={Math.min(s.airQuality, 2000)} max={2000} color={aqColor} />
+                  {s.airQuality >= 1800 && (
+                    <div style={{ display: "flex", alignItems: "center", gap: 6, marginTop: 10,
+                      padding: "6px 10px", borderRadius: 8,
+                      background: "rgba(248,113,113,0.09)", border: "1px solid rgba(248,113,113,0.18)" }}>
+                      <span style={{ color: "#f87171" }}><Ico d={PATHS.alert} size={13} /></span>
+                      <span style={{ fontSize: 10, color: "#f87171", fontWeight: 700 }}>Fire / Smoke alert — threshold exceeded</span>
+                    </div>
+                  )}
+                </Card>
+              </div>
+
+              {/* Temperature chart */}
+              <Card>
+                <CardLabel text="Temperature over Time (°C)" />
+                <div style={{ height: 180 }}>
+                  <ResponsiveContainer width="100%" height="100%">
+                    <LineChart data={firestoreHistory.length ? [...firestoreHistory].reverse().map(r => ({ t: r.timestamp ? new Date(r.timestamp).toLocaleTimeString("en-US", { hour: "2-digit", minute: "2-digit", hour12: false }) : "—", v: r.temperature })) : h.temp}>
+                      <CartesianGrid strokeDasharray="2 4" stroke="rgba(255,255,255,0.04)" />
+                      <XAxis dataKey="t" tick={{ fontSize: 9, fill: "rgba(255,255,255,0.3)" }} axisLine={false} tickLine={false} interval="preserveStartEnd" />
+                      <YAxis tick={{ fontSize: 9, fill: "rgba(255,255,255,0.3)" }} axisLine={false} tickLine={false} width={28} unit="°C" />
+                      <Tooltip content={<MiniTip />} />
+                      <Line type="monotone" dataKey="v" stroke={tempColor} strokeWidth={2.5} dot={{ r: 3, fill: tempColor }}
+                        style={{ filter: `drop-shadow(0 0 5px ${tempColor}88)` }} />
+                    </LineChart>
+                  </ResponsiveContainer>
+                </div>
+              </Card>
+
+              {/* Humidity chart */}
+              <Card>
+                <CardLabel text="Humidity over Time (%)" />
+                <div style={{ height: 180 }}>
+                  <ResponsiveContainer width="100%" height="100%">
+                    <LineChart data={firestoreHistory.length ? [...firestoreHistory].reverse().map(r => ({ t: r.timestamp ? new Date(r.timestamp).toLocaleTimeString("en-US", { hour: "2-digit", minute: "2-digit", hour12: false }) : "—", v: r.humidity })) : h.humidity}>
+                      <CartesianGrid strokeDasharray="2 4" stroke="rgba(255,255,255,0.04)" />
+                      <XAxis dataKey="t" tick={{ fontSize: 9, fill: "rgba(255,255,255,0.3)" }} axisLine={false} tickLine={false} interval="preserveStartEnd" />
+                      <YAxis tick={{ fontSize: 9, fill: "rgba(255,255,255,0.3)" }} axisLine={false} tickLine={false} width={28} unit="%" />
+                      <Tooltip content={<MiniTip />} />
+                      <Line type="monotone" dataKey="v" stroke={humColor} strokeWidth={2.5} dot={{ r: 3, fill: humColor }}
+                        style={{ filter: `drop-shadow(0 0 5px ${humColor}88)` }} />
+                    </LineChart>
+                  </ResponsiveContainer>
+                </div>
+              </Card>
+
+              {/* Historical data table from Firestore */}
+              <Card>
+                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 12 }}>
+                  <CardLabel text="Historical Readings Log (Firestore)" />
+                  {historyLoading && <span style={{ fontSize: 10, color: "rgba(255,255,255,0.3)" }}>Loading...</span>}
+                  {!historyLoading && firestoreHistory.length === 0 && (
+                    <span style={{ fontSize: 10, color: "#fbbf24" }}>No records yet — will appear after first reading</span>
+                  )}
+                </div>
+                <div style={{ overflowX: "auto" }}>
+                  <table style={{ width: "100%", borderCollapse: "collapse", fontFamily: "'DM Mono',monospace", fontSize: 12 }}>
+                    <thead>
+                      <tr style={{ borderBottom: "1px solid rgba(255,255,255,0.08)" }}>
+                        {["#", "Timestamp", "Temperature (°C)", "Humidity (%)", "Smoke (ppm)"].map(col => (
+                          <th key={col} style={{ padding: "7px 12px", textAlign: "left", fontSize: 10,
+                            color: "rgba(255,255,255,0.35)", fontWeight: 700, letterSpacing: "0.06em",
+                            fontFamily: "'DM Sans',sans-serif" }}>{col}</th>
+                        ))}
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {firestoreHistory.map((row, i) => {
+                        const isSmoke = row.airQuality >= 1800;
+                        const timeLabel = row.timestamp
+                          ? new Date(row.timestamp).toLocaleString("en-US", { month: "short", day: "numeric", hour: "2-digit", minute: "2-digit", second: "2-digit", hour12: false })
+                          : "—";
+                        return (
+                          <tr key={row.id || i} style={{ borderBottom: "1px solid rgba(255,255,255,0.04)",
+                            background: i === 0 ? "rgba(255,255,255,0.03)" : "transparent" }}>
+                            <td style={{ padding: "7px 12px", color: "rgba(255,255,255,0.25)" }}>{firestoreHistory.length - i}</td>
+                            <td style={{ padding: "7px 12px", color: "rgba(255,255,255,0.5)" }}>{timeLabel}</td>
+                            <td style={{ padding: "7px 12px", color: row.temperature > 30 ? "#f87171" : "#34d399", fontWeight: 700 }}>
+                              {typeof row.temperature === "number" ? row.temperature.toFixed(1) : row.temperature ?? "—"}
+                            </td>
+                            <td style={{ padding: "7px 12px", color: row.humidity > 70 ? "#fbbf24" : "#60a5fa", fontWeight: 700 }}>
+                              {row.humidity ?? "—"}
+                            </td>
+                            <td style={{ padding: "7px 12px", color: isSmoke ? "#f87171" : "#34d399", fontWeight: 700 }}>
+                              {row.airQuality ?? "—"} {isSmoke && "⚠"}
+                            </td>
+                          </tr>
+                        );
+                      })}
+                    </tbody>
+                  </table>
+                </div>
+              </Card>
+            </>
+          )}
+
+          {/* ══ ACCESS TAB ════════════════════════════════════════════════════ */}
+          {activeNav === "access" && (
+            <AccessTab s={s} maxOccupancy={maxOccupancy} countTolerance={countTolerance} />
+          )}
+
+          {/* ══ STUDY COMFORT TAB ═════════════════════════════════════════════ */}
+          {activeNav === "env" && (
+            <StudyComfortTab s={s} h={h} />
+          )}
+
+          {/* ══ ZONES & NET TAB ═══════════════════════════════════════════════ */}
+          {activeNav === "zones" && (
+            <ZonesTab s={s} h={h} />
+          )}
+
+          {/* ══ ACTIVITY LOG TAB ══════════════════════════════════════════════ */}
+          {activeNav === "activity" && (
+            <ActivityLogTab maxOccupancy={maxOccupancy} setMaxOccupancy={setMaxOccupancy} countTolerance={countTolerance} setCountTolerance={setCountTolerance} />
+          )}
+
           {/* ══ SECTION A: Study Comfort ═══════════════════════════════════════ */}
+          {activeNav === "dashboard" && <>
           <section>
             <SectionHead title="Study Comfort Monitoring" icon="noise" />
             <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 14 }}>
@@ -516,8 +1639,13 @@ export default function LibraryIoTDashboard() {
                   <div>
                     <div style={{ fontSize: 10, color: "rgba(255,255,255,0.35)", marginBottom: 3 }}>Currently Inside</div>
                     <div style={{ fontFamily: "'DM Mono',monospace", fontSize: 38, fontWeight: 800,
-                      color: "white", lineHeight: 1 }}>{s.count}</div>
+                      color: "white", lineHeight: 1 }}>{Math.max(0, (s.count ?? 0) + countTolerance)}</div>
                     <div style={{ fontSize: 10, color: "#818cf8", fontWeight: 700, marginTop: 2 }}>occupants</div>
+                    {countTolerance !== 0 && (
+                      <div style={{ fontSize: 9, color: "rgba(255,255,255,0.25)", fontFamily: "'DM Mono',monospace", marginTop: 1 }}>
+                        raw {s.count} / offset {countTolerance > 0 ? `+${countTolerance}` : countTolerance}
+                      </div>
+                    )}
                   </div>
                   <div style={{ width: 50, height: 50, borderRadius: "50%",
                     background: "rgba(129,140,248,0.12)", border: "2px solid rgba(129,140,248,0.28)",
@@ -530,9 +1658,9 @@ export default function LibraryIoTDashboard() {
                 <div style={{ marginBottom: 12 }}>
                   <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 5 }}>
                     <span style={{ fontSize: 10, color: "rgba(255,255,255,0.35)" }}>Capacity</span>
-                    <span style={{ fontFamily: "'DM Mono',monospace", fontSize: 11, color: "rgba(255,255,255,0.5)" }}>{s.count} / 100</span>
+                    <span style={{ fontFamily: "'DM Mono',monospace", fontSize: 11, color: "rgba(255,255,255,0.5)" }}>{Math.max(0, (s.count ?? 0) + countTolerance)} / {maxOccupancy}</span>
                   </div>
-                  <Bar2 value={s.count} max={100} color={s.count > 70 ? "#f87171" : s.count > 40 ? "#fbbf24" : "#34d399"} />
+                  <Bar2 value={Math.max(0, (s.count ?? 0) + countTolerance)} max={maxOccupancy} color={(Math.max(0, (s.count ?? 0) + countTolerance)) >= maxOccupancy * 0.8 ? "#f87171" : (Math.max(0, (s.count ?? 0) + countTolerance)) >= maxOccupancy * 0.5 ? "#fbbf24" : "#34d399"} />
                 </div>
 
                 {/* librarian */}
@@ -731,6 +1859,8 @@ export default function LibraryIoTDashboard() {
               </Card>
             </div>
           </section>
+
+          </>}
 
         </main>
       </div>

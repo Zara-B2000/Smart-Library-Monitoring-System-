@@ -1,20 +1,17 @@
-// backend/src/firebase.js
-// Basic Firebase Admin SDK setup for Node.js backend
-// Replace the config below with your actual Firebase project credentials
-
 const admin = require("firebase-admin");
 const path = require("path");
+
 let db;
+let firestore;
+
 try {
-  // Try to load the service account key
-  const serviceAccount = require(
-    path.join(__dirname, "../serviceAccountKey.json"),
-  );
+  const serviceAccount = require(path.join(__dirname, "../serviceAccountKey.json"));
   admin.initializeApp({
     credential: admin.credential.cert(serviceAccount),
-    databaseURL: "https://iot-demo-aee53-default-rtdb.asia-southeast1.firebasedatabase.app", // <-- User's actual Firebase Realtime Database URL
+    databaseURL: "https://iot-demo-aee53-default-rtdb.asia-southeast1.firebasedatabase.app",
   });
   db = admin.database();
+  firestore = admin.firestore();
 } catch (err) {
   console.error(
     "\nERROR: Firebase serviceAccountKey.json not found or invalid.\n" +
@@ -22,4 +19,7 @@ try {
   );
   throw err;
 }
+
 module.exports = db;
+module.exports.firestore = firestore;
+module.exports.admin = admin;
