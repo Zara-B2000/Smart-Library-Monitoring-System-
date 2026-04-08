@@ -53,6 +53,12 @@ const PATHS = {
   eye:    "M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8zM12 9a3 3 0 1 0 0 6 3 3 0 0 0 0-6z",
   chevL:  "M15 18l-6-6 6-6",
   chevR:  "M9 18l6-6-6-6",
+  // Nav icons
+  home:       "M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2zM9 22V12h6v10",
+  thermometer:"M14 14.76V3.5a2.5 2.5 0 0 0-5 0v11.26a4.5 4.5 0 1 0 5 0z",
+  door:       "M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16zM12 2v20M2 8.27l10 5.73 10-5.73",
+  headphones: "M3 18v-6a9 9 0 0 1 18 0v6M3 18a2 2 0 0 0 2 2h1a2 2 0 0 0 2-2v-3a2 2 0 0 0-2-2H3v5zm16 0a2 2 0 0 1-2 2h-1a2 2 0 0 1-2-2v-3a2 2 0 0 1 2-2h3v5z",
+  clipboard:  "M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2M9 2h6a1 1 0 0 1 1 1v2a1 1 0 0 1-1 1H9a1 1 0 0 1-1-1V3a1 1 0 0 1 1-1zM12 11h4M12 16h4M8 11h.01M8 16h.01",
 };
 
 // ── Radial Gauge ──────────────────────────────────────────────────────────────
@@ -1237,12 +1243,12 @@ export default function LibraryIoTDashboard() {
   const dateStr = now.toLocaleDateString("en-US", { weekday: "short", month: "short", day: "numeric", year: "numeric" });
 
   const NAV = [
-    { id: "dashboard", icon: "grid",     label: "Dashboard" },
-    { id: "comfort",   icon: "light",    label: "Environment Comfort" },
-    { id: "access",    icon: "people",   label: "Count & Access" },
-    { id: "env",       icon: "noise",    label: "Study Comfort" },
-    { id: "zones",     icon: "signal",   label: "Zones & Net" },
-    { id: "activity",  icon: "activity", label: "Activity Log" },
+    { id: "dashboard", icon: "home",        label: "Dashboard" },
+    { id: "comfort",   icon: "thermometer", label: "Environment Comfort" },
+    { id: "access",    icon: "door",        label: "Count & Access" },
+    { id: "env",       icon: "headphones",  label: "Study Comfort" },
+    { id: "zones",     icon: "wifi",        label: "Zones & Net" },
+    { id: "activity",  icon: "clipboard",   label: "Activity Log" },
   ];
 
   return (
