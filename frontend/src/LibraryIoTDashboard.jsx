@@ -318,8 +318,8 @@ export default function LibraryIoTDashboard() {
   ];
 
   return (
-    <div style={{ fontFamily: "'DM Sans',sans-serif", background: "#07091a", minHeight: "100vh",
-      display: "flex", color: "white", position: "relative", overflow: "hidden" }}>
+    <div style={{ fontFamily: "'DM Sans',sans-serif", background: "#07091a", height: "100vh", width: "100vw",
+      display: "flex", color: "white", position: "fixed", inset: 0, overflow: "hidden" }}>
 
       {/* mesh bg */}
       <div style={{ position: "fixed", inset: 0, zIndex: 0, pointerEvents: "none" }}>
@@ -432,8 +432,8 @@ export default function LibraryIoTDashboard() {
         </header>
 
         {/* CONTENT */}
-        <main style={{ flex: 1, overflowY: "auto", padding: "20px 22px 36px",
-          display: "flex", flexDirection: "column", gap: 20 }}>
+        <main style={{ flex: 1, overflowY: "auto", overflowX: "hidden", padding: "16px 18px 24px",
+          display: "flex", flexDirection: "column", gap: 16 }}>
 
           {/* ══ SECTION A: Study Comfort ═══════════════════════════════════════ */}
           <section>
