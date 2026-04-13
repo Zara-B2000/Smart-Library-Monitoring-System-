@@ -168,6 +168,45 @@ const CardLabel = ({ text }) => (
     color: "rgba(255,255,255,0.75)", marginBottom: 14, letterSpacing: "0.01em" }}>{text}</div>
 );
 
+const getMlBadgeColor = (label = "") => {
+  const text = String(label).toLowerCase();
+  if (text.includes("comfortable") || text.includes("focused") || text.includes("low traffic")) {
+    return "green";
+  }
+  if (text.includes("moderate") || text.includes("partially")) {
+    return "yellow";
+  }
+  if (text.includes("uncomfortable") || text.includes("distracted") || text.includes("high traffic")) {
+    return "red";
+  }
+  return "blue";
+};
+
+const fallbackMlFromSensor = (s) => {
+  const comfortLabel =
+    s.temperature <= 30 && s.temperature >= 19 && s.humidity <= 70 && s.humidity >= 30
+      ? "Comfortable"
+      : "Slightly Uncomfortable";
+  const focusLabel =
+    s.noise <= 50 && s.light >= 300
+      ? "Focused"
+      : s.noise <= 60
+        ? "Partially Focused"
+        : "Distracted";
+  const trafficLabel =
+    s.traffic_level >= 70
+      ? "High Traffic"
+      : s.traffic_level >= 40
+        ? "Moderate Traffic"
+        : "Low Traffic";
+
+  return {
+    comfort: { label: comfortLabel, confidence: 0.5 },
+    focus: { label: focusLabel, confidence: 0.5 },
+    traffic: { label: trafficLabel, confidence: 0.5, pir_hits: 0, pir_window: 5 },
+  };
+};
+
 // ── Zone row ──────────────────────────────────────────────────────────────────
 const ZoneRow = ({ name, value }) => {
   const busy = value > 65, mod = value > 35;
@@ -187,7 +226,7 @@ const ZoneRow = ({ name, value }) => {
 };
 
 // ── Study Comfort Tab ─────────────────────────────────────────────────────────
-function StudyComfortTab({ s, h }) {
+function StudyComfortTab({ s, h, ml }) {
   const [scHistory, setScHistory] = useState([]);
   const [loading, setLoading] = useState(true);
 
@@ -217,6 +256,15 @@ function StudyComfortTab({ s, h }) {
   return (
     <>
       <SectionHead title="Study Comfort — Light & Sound" icon="noise" />
+      <Card style={{ marginBottom: 14 }}>
+        <CardLabel text="ML Focus Prediction" />
+        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+          <Badge label={ml?.focus?.label || "Unknown"} color={getMlBadgeColor(ml?.focus?.label)} />
+          <span style={{ fontFamily: "'DM Mono',monospace", fontSize: 12, color: "rgba(255,255,255,0.6)" }}>
+            Confidence {(Number(ml?.focus?.confidence || 0) * 100).toFixed(0)}%
+          </span>
+        </div>
+      </Card>
 
       {/* Live value cards */}
       <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 14 }}>
@@ -722,7 +770,7 @@ function NoticeBoardAdminTab({ maxOccupancy, setMaxOccupancy, countTolerance, se
 }
 
 // ── Zones & Net Tab ───────────────────────────────────────────────────────────
-function ZonesTab({ s, h }) {
+function ZonesTab({ s, h, ml }) {
   const [zHistory, setZHistory] = useState([]);
   const [loading, setLoading] = useState(true);
 
@@ -766,6 +814,15 @@ function ZonesTab({ s, h }) {
   return (
     <>
       <SectionHead title="Zones & Network" icon="signal" />
+      <Card style={{ marginBottom: 14 }}>
+        <CardLabel text="ML Traffic Prediction" />
+        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12 }}>
+          <Badge label={ml?.traffic?.label || "Unknown"} color={getMlBadgeColor(ml?.traffic?.label)} />
+          <span style={{ fontFamily: "'DM Mono',monospace", fontSize: 12, color: "rgba(255,255,255,0.6)" }}>
+            PIR {ml?.traffic?.pir_hits ?? 0}/{ml?.traffic?.pir_window ?? 5}
+          </span>
+        </div>
+      </Card>
 
       {/* Live metric cards — 3 equal columns */}
       <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 14 }}>
@@ -1104,6 +1161,7 @@ function AccessTab({ s, maxOccupancy, countTolerance }) {
 // ── Main ──────────────────────────────────────────────────────────────────────
 export default function LibraryIoTDashboard() {
   const [sensor, setSensor] = useState(null);
+  const [mlInsights, setMlInsights] = useState(null);
   const [activeNav, setActiveNav] = useState("dashboard");
   const [collapsed, setCollapsed] = useState(false);
   const [now, setNow] = useState(new Date());
@@ -1131,7 +1189,7 @@ export default function LibraryIoTDashboard() {
   const updateSimulated = () => {
     setSensor(prev => {
       if (!prev) prev = initSensor();
-      return {
+      const next = {
         noise: drift(prev.noise, 30, 90, 4),
         light: drift(prev.light, 120, 1000, 30),
         count: drift(prev.count, 5, 80, 2),
@@ -1143,6 +1201,8 @@ export default function LibraryIoTDashboard() {
         speed: drift(prev.speed, 10, 600, 20),
         latency: drift(prev.latency, 2, 120, 4),
       };
+      setMlInsights(fallbackMlFromSensor(next));
+      return next;
     });
     setHistory(prev => {
       const s = sensor || initSensor();
@@ -1179,6 +1239,7 @@ export default function LibraryIoTDashboard() {
             speed: data.activity.speed,
             traffic_level: data.activity.traffic_level,
           });
+          setMlInsights(data.ml || null);
           const t = new Date().toLocaleTimeString("en-US", { hour: "2-digit", minute: "2-digit", second: "2-digit", hour12: false });
           setHistory(prev => ({
             temp: [...prev.temp.slice(-19), { t, v: data.environment.temperature }],
@@ -1220,6 +1281,7 @@ export default function LibraryIoTDashboard() {
 
   const s = sensor;
   const h = history;
+  const ml = mlInsights || fallbackMlFromSensor(s);
 
   // derived
   const noiseColor = s.noise > 65 ? "#f87171" : s.noise > 50 ? "#fbbf24" : "#34d399";
@@ -1377,6 +1439,15 @@ export default function LibraryIoTDashboard() {
           {activeNav === "comfort" && (
             <>
               <SectionHead title="Comfort — Real-Time Monitoring" icon="light" />
+              <Card style={{ marginBottom: 14 }}>
+                <CardLabel text="ML Comfort Prediction" />
+                <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+                  <Badge label={ml.comfort.label} color={getMlBadgeColor(ml.comfort.label)} />
+                  <span style={{ fontFamily: "'DM Mono',monospace", fontSize: 12, color: "rgba(255,255,255,0.6)" }}>
+                    Confidence {(Number(ml.comfort.confidence || 0) * 100).toFixed(0)}%
+                  </span>
+                </div>
+              </Card>
 
               {/* Top row: 3 live value cards */}
               <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 14 }}>
@@ -1554,12 +1625,12 @@ export default function LibraryIoTDashboard() {
 
           {/* ══ STUDY COMFORT TAB ═════════════════════════════════════════════ */}
           {activeNav === "env" && (
-            <StudyComfortTab s={s} h={h} />
+            <StudyComfortTab s={s} h={h} ml={ml} />
           )}
 
           {/* ══ ZONES & NET TAB ═══════════════════════════════════════════════ */}
           {activeNav === "zones" && (
-            <ZonesTab s={s} h={h} />
+            <ZonesTab s={s} h={h} ml={ml} />
           )}
 
           {/* ══ ACTIVITY LOG TAB ══════════════════════════════════════════════ */}
@@ -1581,6 +1652,9 @@ export default function LibraryIoTDashboard() {
                     <span style={{ fontWeight: 700, fontSize: 13, color: "rgba(255,255,255,0.8)" }}>Noise Level</span>
                   </div>
                   <Badge label={noiseLabel} color={noiseV} />
+                </div>
+                <div style={{ marginBottom: 10 }}>
+                  <Badge label={`ML Focus: ${ml.focus.label}`} color={getMlBadgeColor(ml.focus.label)} />
                 </div>
                 <div style={{ display: "flex", alignItems: "center", gap: 16 }}>
                   <RadialGauge value={s.noise} max={100} color={noiseColor} unit="dB" />
@@ -1685,14 +1759,17 @@ export default function LibraryIoTDashboard() {
                 </div>
               </Card>
 
-              {/* TEMPERATURE */}
+              {/* TEMPERATURE + HUMIDITY */}
               <Card>
                 <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 10 }}>
                   <div style={{ display: "flex", alignItems: "center", gap: 7 }}>
                     <span style={{ color: tempColor }}><Ico d={PATHS.temp} size={16} /></span>
-                    <span style={{ fontWeight: 700, fontSize: 12, color: "rgba(255,255,255,0.75)" }}>Temperature</span>
+                    <span style={{ fontWeight: 700, fontSize: 12, color: "rgba(255,255,255,0.75)" }}>Temperature & Humidity</span>
                   </div>
                   <Badge label={s.temperature > 30 ? "HIGH" : "Normal"} color={tempV} />
+                </div>
+                <div style={{ marginBottom: 10 }}>
+                  <Badge label={`ML Comfort: ${ml.comfort.label}`} color={getMlBadgeColor(ml.comfort.label)} />
                 </div>
 
                 <div style={{ textAlign: "center", marginBottom: 10 }}>
@@ -1724,14 +1801,11 @@ export default function LibraryIoTDashboard() {
                     <span style={{ fontSize: 10, color: "#f87171", fontWeight: 700 }}>Above comfortable threshold</span>
                   </div>
                 )}
-              </Card>
 
-              {/* HUMIDITY + AIR */}
-              <Card>
-                <CardLabel text="Humidity & Smoke Detection" />
+                <div style={{ height: 1, background: "rgba(255,255,255,0.05)", margin: "14px 0" }} />
 
                 {/* humidity */}
-                <div style={{ marginBottom: 14 }}>
+                <div>
                   <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 7 }}>
                     <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
                       <span style={{ color: humColor }}><Ico d={PATHS.drop} size={14} /></span>
@@ -1752,9 +1826,10 @@ export default function LibraryIoTDashboard() {
                     </ResponsiveContainer>
                   </div>
                 </div>
+              </Card>
 
-                <div style={{ height: 1, background: "rgba(255,255,255,0.05)", marginBottom: 14 }} />
-
+              {/* SMOKE DETECTION */}
+              <Card>
                 {/* smoke detection */}
                 <div>
                   <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 7 }}>
@@ -1789,6 +1864,9 @@ export default function LibraryIoTDashboard() {
               {/* TRAFFIC & SPEED */}
               <Card>
                 <CardLabel text="Traffic Level & Network Speed" />
+                <div style={{ marginBottom: 12 }}>
+                  <Badge label={`ML Traffic: ${ml.traffic.label}`} color={getMlBadgeColor(ml.traffic.label)} />
+                </div>
 
                 {/* traffic level */}
                 <div style={{ marginBottom: 16 }}>

@@ -13,6 +13,7 @@ app.use(express.json());
 const db = require("./src/firebase");
 const { saveReading, getHistory } = require("./src/services/historyService");
 const { logAccessEvent, getAccessLog } = require("./src/services/accessLogService");
+const { getMlInsights } = require("./src/services/mlService");
 
 // In-memory state to detect count/librarian changes between polls
 let prevCount = null;
@@ -45,6 +46,7 @@ app.get("/api/readings", async (req, res) => {
       occupancy: occupancySnap.val() || {},
       timestamp: new Date().toISOString(),
     };
+    readings.ml = await getMlInsights(readings);
     res.json(readings);
 
     // Save snapshot to Firestore History_Data collection (fire-and-forget)

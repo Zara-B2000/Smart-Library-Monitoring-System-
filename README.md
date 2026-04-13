@@ -50,7 +50,19 @@ Start backend:
 npm start
 ```
 
-### 2) Frontend
+### 2) ML Service (Python)
+
+```bash
+cd ml-service
+python3 -m venv .venv
+source .venv/bin/activate
+pip install -r requirements.txt
+python app.py
+```
+
+ML service runs at `http://127.0.0.1:5001` and exposes `POST /predict`.
+
+### 3) Frontend
 
 ```bash
 cd frontend
@@ -83,3 +95,4 @@ npm start
 
 - Frontend development server proxies API calls to `http://localhost:8000`.
 - `serviceAccountKey.json` is required for backend Firebase Admin access.
+- Backend calls the Python ML service through `ML_SERVICE_URL` in `backend/config/config.env`.
