@@ -1,2 +1,21 @@
+# OS
+.DS_Store
+
+# Node
 node_modules/
+**/node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+
+# Env / secrets
+.env
+.env.*
 backend/serviceAccountKey.json
+
+# Python / ML service
+ml-service/.venv/
+ml-service/__pycache__/
+ml-service/**/*.pyc
+ml-service/model.pkl
