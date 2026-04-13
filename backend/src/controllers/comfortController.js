@@ -1,10 +1,9 @@
 const { calculateComfort } = require("../services/comfortService");
-const { getDatabase, ref, get } = require("../firebase");
+const db = require("../firebase");
 
 const getComfort = async (req, res) => {
   try {
-    const db = getDatabase();
-    const snapshot = await get(ref(db, "comfort"));
+    const snapshot = await db.ref("comfort").once("value");
     if (!snapshot.exists()) {
       return res.status(404).json({ error: "No comfort data found" });
     }

@@ -1,10 +1,9 @@
-const { getDatabase, ref, get } = require("../firebase");
+const db = require("../firebase");
 const { calculateOccupancy } = require("../services/occupancyService");
 
 const getOccupancy = async (req, res) => {
   try {
-    const db = getDatabase();
-    const snapshot = await get(ref(db, "occupancy"));
+    const snapshot = await db.ref("occupancy").once("value");
     if (!snapshot.exists()) {
       return res.status(404).json({ error: "No occupancy data found" });
     }

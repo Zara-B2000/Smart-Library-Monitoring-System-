@@ -1,78 +1,85 @@
-Library IoT Project
+# Library IoT Project
 
-A full-stack IoT dashboard for monitoring library activity, comfort, environment, and occupancy using Firebase and Node.js backend, with a modern HTML frontend.
+Full-stack IoT dashboard for monitoring library activity, comfort, environment, and occupancy.
 
- Features
+## Tech Stack
 
-- Real-time readings from Firebase: activity, comfort, environment, occupancy
-- Node.js/Express backend with REST API
-- Beautiful, responsive frontend (HTML/CSS/JS)
-- Modular code structure for easy maintenance
+- Backend: Node.js + Express
+- Frontend: React (Create React App)
+- Data: Firebase Realtime Database + Firestore
 
- Folder Structure
+## Project Structure
 
-```
+```text
 backend/
-  package.json
   server.js
-  serviceAccountKey.json
+  config/config.env
   src/
     firebase.js
     controllers/
-    models/
     routes/
     services/
 frontend/
-  index.html
+  src/
+    App.js
+    LibraryIoTDashboard.jsx
 ```
 
- Setup
+## Setup
 
- 1. Backend
+### 1) Backend
 
-- Install dependencies:
-  ```bash
-  cd backend
-  npm install
-  npm install nodemon --save-dev
-  ```
-- Add your Firebase service account key as `backend/serviceAccountKey.json`.
-- Start the backend server:
-  ```bash
-  npm start
-  ```
-- Backend runs on port 8000 by default.
+```bash
+cd backend
+npm install
+```
 
- 2. Frontend
+Create `backend/serviceAccountKey.json` from your Firebase service account.
 
-- Serve the frontend with a local web server:
-  ```bash
-  cd frontend
-  python -m http.server 3000
-  ```
-- Open [http://localhost:3000](http://localhost:3000) in your browser.
+Update `backend/config/config.env`:
 
- API Endpoints
+```env
+PORT=8000
+NODE_ENV=development
+FIREBASE_DATABASE_URL=<your-realtime-db-url>
+```
 
-- `/api/readings` — Returns all readings as a single JSON object
-- `/api/activity` — Activity readings
-- `/api/comfort` — Comfort readings
-- `/api/environment` — Environment readings
-- `/api/occupancy` — Occupancy readings
+Start backend:
 
- Customization
+```bash
+npm start
+```
 
-- Update frontend/index.html for UI changes
-- Update backend/src/services for business logic
-- Update backend/src/controllers for API behavior
+### 2) Frontend
 
- Troubleshooting
+```bash
+cd frontend
+npm install
+```
 
-- If frontend shows "Failed to load data":
-  - Make sure backend is running on port 8000
-  - Check browser console for errors
-  - Ensure Firebase credentials are correct
+Create `frontend/.env`:
 
- License
+```env
+REACT_APP_ADMIN_PASSWORD=<admin-password>
+```
 
-MIT
+Start frontend:
+
+```bash
+npm start
+```
+
+## API Endpoints
+
+- `GET /api/readings` - aggregated latest readings
+- `GET /api/history?limit=20` - recent history from Firestore
+- `GET /api/access-log?limit=30` - recent access events from Firestore
+- `GET /api/activity`
+- `GET /api/comfort`
+- `GET /api/environment`
+- `GET /api/occupancy`
+
+## Notes
+
+- Frontend development server proxies API calls to `http://localhost:8000`.
+- `serviceAccountKey.json` is required for backend Firebase Admin access.

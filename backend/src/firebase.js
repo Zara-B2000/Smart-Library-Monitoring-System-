@@ -6,9 +6,12 @@ let firestore;
 
 try {
   const serviceAccount = require(path.join(__dirname, "../serviceAccountKey.json"));
+  const databaseURL =
+    process.env.FIREBASE_DATABASE_URL ||
+    "https://iot-demo-aee53-default-rtdb.asia-southeast1.firebasedatabase.app";
   admin.initializeApp({
     credential: admin.credential.cert(serviceAccount),
-    databaseURL: "https://iot-demo-aee53-default-rtdb.asia-southeast1.firebasedatabase.app",
+    databaseURL,
   });
   db = admin.database();
   firestore = admin.firestore();

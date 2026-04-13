@@ -360,10 +360,10 @@ function StudyComfortTab({ s, h }) {
   );
 }
 
-// ── Activity Log Tab ──────────────────────────────────────────────────────────
-const ADMIN_PASSWORD = "12345678";
+// ── Notice Board & Admin Tab ──────────────────────────────────────────────────
+const ADMIN_PASSWORD = process.env.REACT_APP_ADMIN_PASSWORD || "";
 
-function ActivityLogTab({ maxOccupancy, setMaxOccupancy, countTolerance, setCountTolerance }) {
+function NoticeBoardAdminTab({ maxOccupancy, setMaxOccupancy, countTolerance, setCountTolerance }) {
   const [isAdmin, setIsAdmin] = useState(false);
   const [showLogin, setShowLogin] = useState(false);
   const [pw, setPw] = useState("");
@@ -384,6 +384,10 @@ function ActivityLogTab({ maxOccupancy, setMaxOccupancy, countTolerance, setCoun
   const [tolInput, setTolInput] = useState(String(countTolerance));
 
   const handleLogin = () => {
+    if (!ADMIN_PASSWORD) {
+      setPwError("Admin password is not configured.");
+      return;
+    }
     if (pw === ADMIN_PASSWORD) {
       setIsAdmin(true);
       setShowLogin(false);
@@ -1248,7 +1252,7 @@ export default function LibraryIoTDashboard() {
     { id: "access",    icon: "door",        label: "Count & Access" },
     { id: "env",       icon: "headphones",  label: "Study Comfort" },
     { id: "zones",     icon: "wifi",        label: "Zones & Net" },
-    { id: "activity",  icon: "clipboard",   label: "Activity Log" },
+    { id: "admin",     icon: "clipboard",   label: "Notices" },
   ];
 
   return (
@@ -1559,8 +1563,8 @@ export default function LibraryIoTDashboard() {
           )}
 
           {/* ══ ACTIVITY LOG TAB ══════════════════════════════════════════════ */}
-          {activeNav === "activity" && (
-            <ActivityLogTab maxOccupancy={maxOccupancy} setMaxOccupancy={setMaxOccupancy} countTolerance={countTolerance} setCountTolerance={setCountTolerance} />
+          {activeNav === "admin" && (
+            <NoticeBoardAdminTab maxOccupancy={maxOccupancy} setMaxOccupancy={setMaxOccupancy} countTolerance={countTolerance} setCountTolerance={setCountTolerance} />
           )}
 
           {/* ══ SECTION A: Study Comfort ═══════════════════════════════════════ */}

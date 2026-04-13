@@ -1,10 +1,9 @@
-const { getDatabase, ref, get } = require("../firebase");
+const db = require("../firebase");
 const { calculateEnvironment } = require("../services/environmentService");
 
 const getEnvironment = async (req, res) => {
   try {
-    const db = getDatabase();
-    const snapshot = await get(ref(db, "environment"));
+    const snapshot = await db.ref("environment").once("value");
     if (!snapshot.exists()) {
       return res.status(404).json({ error: "No environment data found" });
     }

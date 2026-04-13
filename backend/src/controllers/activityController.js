@@ -1,10 +1,9 @@
-const { getDatabase, ref, get } = require("../firebase");
+const db = require("../firebase");
 const { calculateActivity } = require("../services/activityService");
 
 const getActivity = async (req, res) => {
   try {
-    const db = getDatabase();
-    const snapshot = await get(ref(db, "activity"));
+    const snapshot = await db.ref("activity").once("value");
     if (!snapshot.exists()) {
       return res.status(404).json({ error: "No activity data found" });
     }
