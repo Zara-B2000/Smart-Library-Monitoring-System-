@@ -1297,9 +1297,24 @@ export default function LibraryIoTDashboard() {
   const aqColor    = s.airQuality >= 1800 ? "#f87171" : "#34d399";
   const aqV        = s.airQuality >= 1800 ? "red" : "green";
   const aqLabel    = s.airQuality >= 1800 ? "Fire / Smoke Detected" : "No Fire or Smoke";
+  const smokeAlert = s.airQuality >= 1800;
   const latV       = s.latency > 60 ? "red" : s.latency > 30 ? "yellow" : "green";
   const latColor   = s.latency > 60 ? "#f87171" : s.latency > 30 ? "#fbbf24" : "#34d399";
   const trafficColor = s.traffic_level > 70 ? "#f87171" : s.traffic_level > 40 ? "#fbbf24" : "#34d399";
+
+  const mlLabels = [ml.comfort.label, ml.focus.label, ml.traffic.label].map(l => String(l || "").toLowerCase());
+  const mlScore = mlLabels.reduce((acc, label) => {
+    if (label.includes("comfortable") || label.includes("focused") || label.includes("low traffic")) return acc + 1;
+    if (label.includes("moderate") || label.includes("partially")) return acc + 0.5;
+    return acc - 1;
+  }, 0);
+  const countLow = (s.count ?? 0) < Math.max(1, maxOccupancy * 0.6);
+  const mlTopStatus = smokeAlert || !countLow || mlScore <= -1
+    ? { label: "Alert", color: "#f87171", sub: "High risk — act now." }
+    : mlScore >= 2.5 && countLow && !smokeAlert
+      ? { label: "All Clear", color: "#34d399", sub: "Low count, ML signals are positive." }
+      : { label: "Monitor", color: "#fbbf24", sub: "Mixed ML signals — keep an eye on conditions." };
+  const mlSummaryText = `${mlTopStatus.label} · ${mlTopStatus.sub}`;
   const trafficLabel = s.traffic_level > 70 ? "High" : s.traffic_level > 40 ? "Moderate" : "Low";
   const trafficV   = s.traffic_level > 70 ? "red" : s.traffic_level > 40 ? "yellow" : "green";
   const speedColor = s.speed > 400 ? "#34d399" : s.speed > 150 ? "#fbbf24" : "#f87171";
@@ -1404,12 +1419,28 @@ export default function LibraryIoTDashboard() {
         <header style={{ height: 62, padding: "0 24px", display: "flex", alignItems: "center",
           justifyContent: "space-between", borderBottom: "1px solid rgba(255,255,255,0.06)",
           background: "rgba(255,255,255,0.018)", backdropFilter: "blur(14px)", flexShrink: 0 }}>
-          <div>
+          <div style={{ minWidth: 0 }}>
             <div style={{ fontWeight: 800, fontSize: 17, letterSpacing: "-0.01em", color: "white" }}>
               Library IoT Dashboard
             </div>
             <div style={{ fontSize: 11, color: "rgba(255,255,255,0.3)", letterSpacing: "0.02em" }}>
               {dateStr}
+            </div>
+          </div>
+
+          <div style={{ flex: 1, display: "flex", justifyContent: "center", minWidth: 0 }}>
+            <div style={{ display: "flex", alignItems: "center", gap: 8, padding: "8px 14px",
+              borderRadius: 999, background: "rgba(255,255,255,0.06)", border: `1px solid ${mlTopStatus.color}33`, maxWidth: 360 }}>
+              <span style={{ width: 8, height: 8, borderRadius: "50%", background: mlTopStatus.color,
+                boxShadow: `0 0 8px ${mlTopStatus.color}33`, display: "inline-block" }} />
+              <div style={{ display: "flex", flexDirection: "column", lineHeight: 1.2, minWidth: 0 }}>
+                <span style={{ fontSize: 11, fontWeight: 800, color: mlTopStatus.color, letterSpacing: "0.05em" }}>
+                  {mlTopStatus.label}
+                </span>
+                <span style={{ fontSize: 10, color: "rgba(255,255,255,0.65)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                  {mlTopStatus.sub}
+                </span>
+              </div>
             </div>
           </div>
 
@@ -1421,7 +1452,7 @@ export default function LibraryIoTDashboard() {
               <span style={{ fontFamily: "'DM Mono',monospace", fontSize: 12, fontWeight: 600,
                 color: "rgba(255,255,255,0.65)" }}>{timeStr}</span>
             </div>
-            {/* status pill */}
+            {/* system status pill */}
             <div style={{ display: "flex", alignItems: "center", gap: 7, padding: "6px 14px",
               borderRadius: 999, background: "rgba(52,211,153,0.09)", border: "1px solid rgba(52,211,153,0.22)" }}>
               <span style={{ width: 7, height: 7, borderRadius: "50%", background: "#34d399",
@@ -1515,22 +1546,28 @@ export default function LibraryIoTDashboard() {
                     </div>
                     <Badge label={aqLabel} color={aqV} />
                   </div>
-                  <div style={{ textAlign: "center", margin: "8px 0" }}>
-                    <span style={{ fontFamily: "'DM Mono',monospace", fontSize: 52, fontWeight: 800,
-                      color: aqColor, lineHeight: 1, textShadow: `0 0 24px ${aqColor}44` }}>
-                      {s.airQuality}
-                    </span>
-                    <sup style={{ fontSize: 12, color: "rgba(255,255,255,0.35)", fontFamily: "'DM Sans',sans-serif", marginLeft: 4 }}>ppm</sup>
+                  <div style={{ height: 52, margin: "0 0 10px" }}>
+                    <ResponsiveContainer width="100%" height="100%">
+                      <BarChart data={h.aq} margin={{ top: 0, right: 0, bottom: 0, left: 0 }}>
+                        <Bar dataKey="v" fill={`${aqColor}33`} radius={[10,10,0,0]} />
+                        <Tooltip content={<MiniTip />} />
+                      </BarChart>
+                    </ResponsiveContainer>
                   </div>
-                  <Bar2 value={Math.min(s.airQuality, 2000)} max={2000} color={aqColor} />
-                  {s.airQuality >= 1800 && (
-                    <div style={{ display: "flex", alignItems: "center", gap: 6, marginTop: 10,
-                      padding: "6px 10px", borderRadius: 8,
-                      background: "rgba(248,113,113,0.09)", border: "1px solid rgba(248,113,113,0.18)" }}>
-                      <span style={{ color: "#f87171" }}><Ico d={PATHS.alert} size={13} /></span>
-                      <span style={{ fontSize: 10, color: "#f87171", fontWeight: 700 }}>Fire / Smoke alert — threshold exceeded</span>
-                    </div>
-                  )}
+                  <div style={{ display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center",
+                    gap: 10, padding: "16px 14px", borderRadius: 18,
+                    background: smokeAlert ? "rgba(248,113,113,0.12)" : "rgba(52,211,153,0.12)",
+                    border: `1px solid ${smokeAlert ? "rgba(248,113,113,0.24)" : "rgba(52,211,153,0.24)"}` }}>
+                    <span style={{ display: "flex", alignItems: "center", gap: 10, color: aqColor, fontSize: 18, fontWeight: 800 }}>
+                      <Ico d={PATHS.eye} size={20} />
+                      <span>{aqLabel}</span>
+                    </span>
+                    <span style={{ fontSize: 13, color: "rgba(255,255,255,0.8)", textAlign: "center", maxWidth: 260, lineHeight: 1.4 }}>
+                      {smokeAlert
+                        ? "Immediate fire/smoke alert — take action now."
+                        : "Normal air quality — no fire or smoke detected."}
+                    </span>
+                  </div>
                 </Card>
               </div>
 
@@ -1640,66 +1677,97 @@ export default function LibraryIoTDashboard() {
 
           {/* ══ SECTION A: Study Comfort ═══════════════════════════════════════ */}
           {activeNav === "dashboard" && <>
-          <section>
-            <SectionHead title="Study Comfort Monitoring" icon="noise" />
-            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 14 }}>
+          <section style={{ marginBottom: 4 }}>
+            <SectionHead title="Study environment" icon="noise" />
+            <div style={{ display: "grid", gridTemplateColumns: "1fr", gap: 16 }}>
 
-              {/* NOISE */}
-              <Card>
-                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 12 }}>
-                  <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-                    <span style={{ color: noiseColor }}><Ico d={PATHS.noise} size={18} /></span>
-                    <span style={{ fontWeight: 700, fontSize: 13, color: "rgba(255,255,255,0.8)" }}>Noise Level</span>
-                  </div>
-                  <Badge label={noiseLabel} color={noiseV} />
-                </div>
-                <div style={{ marginBottom: 10 }}>
-                  <Badge label={`ML Focus: ${ml.focus.label}`} color={getMlBadgeColor(ml.focus.label)} />
-                </div>
-                <div style={{ display: "flex", alignItems: "center", gap: 16 }}>
-                  <RadialGauge value={s.noise} max={100} color={noiseColor} unit="dB" />
-                  <div style={{ flex: 1 }}>
-                    <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 6 }}>
-                      <span style={{ fontSize: 11, color: "rgba(255,255,255,0.35)" }}>Level</span>
-                      <span style={{ fontFamily: "'DM Mono',monospace", fontSize: 12, fontWeight: 700, color: "white" }}>{s.noise} dB</span>
+              <Card style={{
+                boxShadow: "0 0 0 1px rgba(129,140,248,0.12), 0 12px 40px rgba(0,0,0,0.25)",
+              }}>
+                <div style={{
+                  display: "flex", flexWrap: "wrap", alignItems: "flex-start", justifyContent: "space-between",
+                  gap: 12, marginBottom: 18, paddingBottom: 14,
+                  borderBottom: "1px solid rgba(255,255,255,0.06)",
+                }}>
+                  <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
+                    <div style={{
+                      width: 44, height: 44, borderRadius: 12,
+                      background: "linear-gradient(135deg, rgba(129,140,248,0.2) 0%, rgba(52,211,153,0.12) 100%)",
+                      border: "1px solid rgba(255,255,255,0.08)",
+                      display: "flex", alignItems: "center", justifyContent: "center", gap: 4,
+                    }}>
+                      <span style={{ color: noiseColor }}><Ico d={PATHS.noise} size={16} /></span>
+                      <span style={{ color: lightColor }}><Ico d={PATHS.light} size={16} /></span>
                     </div>
-                    <Bar2 value={s.noise} max={100} color={noiseColor} />
-                    <div style={{ height: 60, marginTop: 10 }}>
-                      <ResponsiveContainer width="100%" height="100%">
-                        <LineChart data={h.noise}>
-                          <Line type="monotone" dataKey="v" stroke={noiseColor} strokeWidth={2} dot={false} />
-                          <Tooltip content={<MiniTip />} />
-                        </LineChart>
-                      </ResponsiveContainer>
+                    <div>
+                      <div style={{ fontWeight: 800, fontSize: 14, color: "rgba(255,255,255,0.92)", letterSpacing: "-0.02em" }}>
+                        Sound & lighting
+                      </div>
+                      <div style={{ fontSize: 11, color: "rgba(255,255,255,0.38)", marginTop: 2 }}>
+                        Noise (dB) and illuminance (lux) together
+                      </div>
                     </div>
                   </div>
+                  <div style={{ display: "flex", flexWrap: "wrap", gap: 8, alignItems: "center", justifyContent: "flex-end" }}>
+                    <Badge label={noiseLabel} color={noiseV} />
+                    <Badge label={lightLabel} color={lightV} />
+                    <Badge label={`ML · ${ml.focus.label}`} color={getMlBadgeColor(ml.focus.label)} />
+                  </div>
                 </div>
-              </Card>
 
-              {/* LIGHT */}
-              <Card>
-                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 12 }}>
-                  <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-                    <span style={{ color: lightColor }}><Ico d={PATHS.light} size={18} /></span>
-                    <span style={{ fontWeight: 700, fontSize: 13, color: "rgba(255,255,255,0.8)" }}>Light Intensity</span>
-                  </div>
-                  <Badge label={lightLabel} color={lightV} />
-                </div>
-                <div style={{ display: "flex", alignItems: "center", gap: 16 }}>
-                  <RadialGauge value={s.light} max={1000} color={lightColor} unit="lux" />
-                  <div style={{ flex: 1 }}>
-                    <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 6 }}>
-                      <span style={{ fontSize: 11, color: "rgba(255,255,255,0.35)" }}>Intensity</span>
-                      <span style={{ fontFamily: "'DM Mono',monospace", fontSize: 12, fontWeight: 700, color: "white" }}>{s.light} lx</span>
+                <div style={{
+                  display: "grid",
+                  gridTemplateColumns: "minmax(0, 1fr) 1px minmax(0, 1fr)",
+                  gap: 0,
+                  alignItems: "stretch",
+                }}>
+                  <div style={{ paddingRight: 18, minWidth: 0 }}>
+                    <div style={{ fontSize: 10, fontWeight: 700, letterSpacing: "0.08em", color: "rgba(255,255,255,0.35)",
+                      marginBottom: 12, textTransform: "uppercase" }}>Noise</div>
+                    <div style={{ display: "flex", alignItems: "flex-start", gap: 14 }}>
+                      <RadialGauge value={s.noise} max={100} color={noiseColor} unit="dB" />
+                      <div style={{ flex: 1, minWidth: 0 }}>
+                        <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 6 }}>
+                          <span style={{ fontSize: 11, color: "rgba(255,255,255,0.35)" }}>Level</span>
+                          <span style={{ fontFamily: "'DM Mono',monospace", fontSize: 13, fontWeight: 700, color: noiseColor }}>{s.noise} dB</span>
+                        </div>
+                        <Bar2 value={s.noise} max={100} color={noiseColor} />
+                        <div style={{ height: 72, marginTop: 12 }}>
+                          <ResponsiveContainer width="100%" height="100%">
+                            <LineChart data={h.noise}>
+                              <CartesianGrid strokeDasharray="2 4" stroke="rgba(255,255,255,0.04)" vertical={false} />
+                              <Line type="monotone" dataKey="v" stroke={noiseColor} strokeWidth={2} dot={false} />
+                              <Tooltip content={<MiniTip />} />
+                            </LineChart>
+                          </ResponsiveContainer>
+                        </div>
+                      </div>
                     </div>
-                    <Bar2 value={s.light} max={1000} color={lightColor} />
-                    <div style={{ height: 60, marginTop: 10 }}>
-                      <ResponsiveContainer width="100%" height="100%">
-                        <BarChart data={h.light}>
-                          <Bar dataKey="v" fill={`${lightColor}33`} radius={[3,3,0,0]} />
-                          <Tooltip content={<MiniTip />} />
-                        </BarChart>
-                      </ResponsiveContainer>
+                  </div>
+
+                  <div style={{ background: "linear-gradient(180deg, transparent, rgba(255,255,255,0.08), transparent)", width: 1, minHeight: 140 }} />
+
+                  <div style={{ paddingLeft: 18, minWidth: 0 }}>
+                    <div style={{ fontSize: 10, fontWeight: 700, letterSpacing: "0.08em", color: "rgba(255,255,255,0.35)",
+                      marginBottom: 12, textTransform: "uppercase" }}>Light</div>
+                    <div style={{ display: "flex", alignItems: "flex-start", gap: 14 }}>
+                      <RadialGauge value={s.light} max={1000} color={lightColor} unit="lux" />
+                      <div style={{ flex: 1, minWidth: 0 }}>
+                        <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 6 }}>
+                          <span style={{ fontSize: 11, color: "rgba(255,255,255,0.35)" }}>Intensity</span>
+                          <span style={{ fontFamily: "'DM Mono',monospace", fontSize: 13, fontWeight: 700, color: lightColor }}>{s.light} lx</span>
+                        </div>
+                        <Bar2 value={s.light} max={1000} color={lightColor} />
+                        <div style={{ height: 72, marginTop: 12 }}>
+                          <ResponsiveContainer width="100%" height="100%">
+                            <BarChart data={h.light}>
+                              <CartesianGrid strokeDasharray="2 4" stroke="rgba(255,255,255,0.04)" vertical={false} />
+                              <Bar dataKey="v" fill={`${lightColor}40`} radius={[4, 4, 0, 0]} />
+                              <Tooltip content={<MiniTip />} />
+                            </BarChart>
+                          </ResponsiveContainer>
+                        </div>
+                      </div>
                     </div>
                   </div>
                 </div>
@@ -1708,59 +1776,17 @@ export default function LibraryIoTDashboard() {
           </section>
 
           {/* ══ SECTION B + C: Access & Environment ═══════════════════════════ */}
-          <section>
-            <div style={{ display: "grid", gridTemplateColumns: "1.05fr 1fr 1fr", gap: 14 }}>
-
-              {/* ACCESS */}
-              <Card>
-                <CardLabel text="Library Access & Supervision" />
-
-                {/* big occupancy */}
-                <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between",
-                  padding: "14px 16px", borderRadius: 14,
-                  background: "rgba(129,140,248,0.07)", border: "1px solid rgba(129,140,248,0.14)",
-                  marginBottom: 12 }}>
-                  <div>
-                    <div style={{ fontSize: 10, color: "rgba(255,255,255,0.35)", marginBottom: 3 }}>Currently Inside</div>
-                    <div style={{ fontFamily: "'DM Mono',monospace", fontSize: 38, fontWeight: 800,
-                      color: "white", lineHeight: 1 }}>{Math.max(0, (s.count ?? 0) + countTolerance)}</div>
-                    <div style={{ fontSize: 10, color: "#818cf8", fontWeight: 700, marginTop: 2 }}>occupants</div>
-                    {countTolerance !== 0 && (
-                      <div style={{ fontSize: 9, color: "rgba(255,255,255,0.25)", fontFamily: "'DM Mono',monospace", marginTop: 1 }}>
-                        raw {s.count} / offset {countTolerance > 0 ? `+${countTolerance}` : countTolerance}
-                      </div>
-                    )}
-                  </div>
-                  <div style={{ width: 50, height: 50, borderRadius: "50%",
-                    background: "rgba(129,140,248,0.12)", border: "2px solid rgba(129,140,248,0.28)",
-                    display: "flex", alignItems: "center", justifyContent: "center", color: "#818cf8" }}>
-                    <Ico d={PATHS.people} size={22} />
-                  </div>
-                </div>
-
-                {/* occupancy bar */}
-                <div style={{ marginBottom: 12 }}>
-                  <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 5 }}>
-                    <span style={{ fontSize: 10, color: "rgba(255,255,255,0.35)" }}>Capacity</span>
-                    <span style={{ fontFamily: "'DM Mono',monospace", fontSize: 11, color: "rgba(255,255,255,0.5)" }}>{Math.max(0, (s.count ?? 0) + countTolerance)} / {maxOccupancy}</span>
-                  </div>
-                  <Bar2 value={Math.max(0, (s.count ?? 0) + countTolerance)} max={maxOccupancy} color={(Math.max(0, (s.count ?? 0) + countTolerance)) >= maxOccupancy * 0.8 ? "#f87171" : (Math.max(0, (s.count ?? 0) + countTolerance)) >= maxOccupancy * 0.5 ? "#fbbf24" : "#34d399"} />
-                </div>
-
-                {/* librarian */}
-                <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between",
-                  padding: "10px 13px", borderRadius: 12,
-                  background: "rgba(255,255,255,0.03)", border: "1px solid rgba(255,255,255,0.07)" }}>
-                  <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-                    <span style={{ color: "rgba(255,255,255,0.35)" }}><Ico d={PATHS.user} size={15} /></span>
-                    <span style={{ fontSize: 12, color: "rgba(255,255,255,0.55)", fontWeight: 600 }}>Librarian</span>
-                  </div>
-                  <Badge label={s.is_librarian ? "Present" : "Not Present"} color={s.is_librarian ? "green" : "red"} />
-                </div>
-              </Card>
+          <section style={{ marginBottom: 4 }}>
+            <SectionHead title="Occupancy & climate" icon="temp" />
+            <div style={{
+              display: "grid",
+              gridTemplateColumns: "3fr 1fr",
+              gap: 16,
+              alignItems: "stretch",
+            }}>
 
               {/* TEMPERATURE + HUMIDITY */}
-              <Card>
+              <Card style={{ boxShadow: "0 0 0 1px rgba(52,211,153,0.08)" }}>
                 <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 10 }}>
                   <div style={{ display: "flex", alignItems: "center", gap: 7 }}>
                     <span style={{ color: tempColor }}><Ico d={PATHS.temp} size={16} /></span>
@@ -1804,46 +1830,46 @@ export default function LibraryIoTDashboard() {
 
                 <div style={{ height: 1, background: "rgba(255,255,255,0.05)", margin: "14px 0" }} />
 
-                {/* humidity */}
                 <div>
-                  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 7 }}>
-                    <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
-                      <span style={{ color: humColor }}><Ico d={PATHS.drop} size={14} /></span>
-                      <span style={{ fontSize: 11, color: "rgba(255,255,255,0.45)", fontWeight: 600 }}>Humidity</span>
-                    </div>
-                    <div style={{ display: "flex", alignItems: "center", gap: 7 }}>
-                      <span style={{ fontFamily: "'DM Mono',monospace", fontSize: 15, fontWeight: 800, color: humColor }}>{s.humidity}%</span>
-                      {s.humidity > 70 && <Badge label="HIGH" color="yellow" />}
-                    </div>
-                  </div>
-                  <Bar2 value={s.humidity} max={100} color={humColor} />
-                  <div style={{ height: 48, marginTop: 6 }}>
-                    <ResponsiveContainer width="100%" height="100%">
-                      <LineChart data={h.humidity}>
-                        <Line type="monotone" dataKey="v" stroke={humColor} strokeWidth={1.5} dot={false} />
-                        <Tooltip content={<MiniTip />} />
-                      </LineChart>
-                    </ResponsiveContainer>
-                  </div>
+                  <div style={{ textAlign: "center", marginBottom: 12 }}>
+                  <span style={{ fontFamily: "'DM Mono',monospace", fontSize: 46, fontWeight: 800,
+                    color: humColor, lineHeight: 1, transition: "color 0.4s",
+                    textShadow: `0 0 20px ${humColor}44` }}>
+                    {typeof s.humidity === 'number' ? s.humidity.toFixed(1) : s.humidity}%
+                  </span>
+                </div>
+                <div style={{ display: "flex", justifyContent: "center", marginBottom: 10 }}>
+                  <Badge label={s.humidity > 70 ? "HIGH" : "Normal"} color={humV} />
+                </div>
+                <Bar2 value={s.humidity} max={100} color={humColor} />
+                <div style={{ height: 48, marginTop: 12 }}>
+                  <ResponsiveContainer width="100%" height="100%">
+                    <LineChart data={h.humidity}>
+                      <Line type="monotone" dataKey="v" stroke={humColor} strokeWidth={1.5} dot={false} />
+                      <Tooltip content={<MiniTip />} />
+                    </LineChart>
+                  </ResponsiveContainer>
+                </div>
                 </div>
               </Card>
 
               {/* SMOKE DETECTION */}
-              <Card>
-                {/* smoke detection */}
-                <div>
-                  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 7 }}>
+              <Card style={{ boxShadow: "0 0 0 1px rgba(248,113,113,0.1)", minHeight: 0, display: "flex", flexDirection: "column" }}>
+                <CardLabel text="Smoke detection" />
+                <div style={{ flex: 1, display: "flex", flexDirection: "column", justifyContent: "flex-start", minHeight: 0, gap: 12 }}>
+                  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 10 }}>
                     <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
                       <span style={{ color: aqColor }}><Ico d={PATHS.alert} size={14} /></span>
-                      <span style={{ fontSize: 11, color: "rgba(255,255,255,0.45)", fontWeight: 600 }}>Smoke Detection</span>
+                      <span style={{ fontSize: 11, color: "rgba(255,255,255,0.45)", fontWeight: 600 }}>Air quality (ppm)</span>
                     </div>
-                    <div style={{ display: "flex", alignItems: "center", gap: 7 }}>
-                      <span style={{ fontFamily: "'DM Mono',monospace", fontSize: 15, fontWeight: 800, color: aqColor }}>{s.airQuality}</span>
-                      <Badge label={aqLabel} color={aqV} />
+                    <div style={{ textAlign: "right" }}>
+                      <div style={{ fontFamily: "'DM Mono',monospace", fontSize: 34, fontWeight: 800, color: aqColor, lineHeight: 1 }}>
+                        {s.airQuality}
+                      </div>
                     </div>
                   </div>
                   <Bar2 value={Math.min(s.airQuality, 2000)} max={2000} color={aqColor} />
-                  <div style={{ height: 48, marginTop: 6 }}>
+                  <div style={{ height: 38, marginTop: 10, minHeight: 0 }}>
                     <ResponsiveContainer width="100%" height="100%">
                       <BarChart data={h.aq}>
                         <Bar dataKey="v" fill={`${aqColor}33`} radius={[2,2,0,0]} />
@@ -1851,98 +1877,152 @@ export default function LibraryIoTDashboard() {
                       </BarChart>
                     </ResponsiveContainer>
                   </div>
+                  <div style={{ marginTop: 10, padding: "16px 14px", borderRadius: 18,
+                    background: smokeAlert ? "rgba(248,113,113,0.12)" : "rgba(52,211,153,0.12)",
+                    border: `1px solid ${smokeAlert ? "rgba(248,113,113,0.24)" : "rgba(52,211,153,0.24)"}`,
+                    display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", textAlign: "center", gap: 8 }}>
+                    <span style={{ display: "inline-flex", alignItems: "center", gap: 10, color: aqColor, fontSize: 18, fontWeight: 800 }}>
+                      <Ico d={PATHS.eye} size={20} />
+                      <span>{aqLabel}</span>
+                    </span>
+                    <span style={{ fontSize: 13, color: "rgba(255,255,255,0.85)", lineHeight: 1.4, maxWidth: 280 }}>
+                      {smokeAlert
+                        ? "Immediate fire/smoke alert — take action now."
+                        : "Normal air quality — no fire or smoke detected."}
+                    </span>
+                  </div>
+                </div>
+              </Card>
+            </div>
+
+            <div style={{ display: "grid", gridTemplateColumns: "1fr", gap: 16, marginTop: 16 }}>
+              <Card style={{ boxShadow: "0 0 0 1px rgba(129,140,248,0.08)" }}>
+                <CardLabel text="Library Access & Supervision" />
+
+                <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between",
+                  padding: "14px 16px", borderRadius: 14,
+                  background: "rgba(129,140,248,0.07)", border: "1px solid rgba(129,140,248,0.14)",
+                  marginBottom: 12 }}>
+                  <div>
+                    <div style={{ fontSize: 10, color: "rgba(255,255,255,0.35)", marginBottom: 3 }}>Currently Inside</div>
+                    <div style={{ fontFamily: "'DM Mono',monospace", fontSize: 38, fontWeight: 800,
+                      color: "white", lineHeight: 1 }}>{Math.max(0, (s.count ?? 0) + countTolerance)}</div>
+                    <div style={{ fontSize: 10, color: "#818cf8", fontWeight: 700, marginTop: 2 }}>occupants</div>
+                    {countTolerance !== 0 && (
+                      <div style={{ fontSize: 9, color: "rgba(255,255,255,0.25)", fontFamily: "'DM Mono',monospace", marginTop: 1 }}>
+                        raw {s.count} / offset {countTolerance > 0 ? `+${countTolerance}` : countTolerance}
+                      </div>
+                    )}
+                  </div>
+                  <div style={{ width: 50, height: 50, borderRadius: "50%",
+                    background: "rgba(129,140,248,0.12)", border: "2px solid rgba(129,140,248,0.28)",
+                    display: "flex", alignItems: "center", justifyContent: "center", color: "#818cf8" }}>
+                    <Ico d={PATHS.people} size={22} />
+                  </div>
+                </div>
+
+                <div style={{ marginBottom: 12 }}>
+                  <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 5 }}>
+                    <span style={{ fontSize: 10, color: "rgba(255,255,255,0.35)" }}>Capacity</span>
+                    <span style={{ fontFamily: "'DM Mono',monospace", fontSize: 11, color: "rgba(255,255,255,0.5)" }}>{Math.max(0, (s.count ?? 0) + countTolerance)} / {maxOccupancy}</span>
+                  </div>
+                  <Bar2 value={Math.max(0, (s.count ?? 0) + countTolerance)} max={maxOccupancy} color={(Math.max(0, (s.count ?? 0) + countTolerance)) >= maxOccupancy * 0.8 ? "#f87171" : (Math.max(0, (s.count ?? 0) + countTolerance)) >= maxOccupancy * 0.5 ? "#fbbf24" : "#34d399"} />
+                </div>
+
+                <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between",
+                  padding: "10px 13px", borderRadius: 12,
+                  background: "rgba(255,255,255,0.03)", border: "1px solid rgba(255,255,255,0.07)" }}>
+                  <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                    <span style={{ color: "rgba(255,255,255,0.35)" }}><Ico d={PATHS.user} size={15} /></span>
+                    <span style={{ fontSize: 12, color: "rgba(255,255,255,0.55)", fontWeight: 600 }}>Librarian</span>
+                  </div>
+                  <Badge label={s.is_librarian ? "Present" : "Not Present"} color={s.is_librarian ? "green" : "red"} />
                 </div>
               </Card>
             </div>
           </section>
 
           {/* ══ SECTION D: Activity ════════════════════════════════════════════ */}
-          <section>
-            <SectionHead title="Network Activity" icon="activity" />
-            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 14 }}>
+          <section style={{ marginBottom: 8 }}>
+            <SectionHead title="Network activity" icon="activity" />
+            <div style={{ display: "grid", gridTemplateColumns: "1fr", gap: 16, alignItems: "stretch" }}>
 
-              {/* TRAFFIC & SPEED */}
-              <Card>
-                <CardLabel text="Traffic Level & Network Speed" />
+              {/* TRAFFIC, THROUGHPUT & LATENCY */}
+              <Card style={{ boxShadow: "0 0 0 1px rgba(96,165,250,0.1)" }}>
+                <CardLabel text="Traffic, throughput & latency" />
                 <div style={{ marginBottom: 12 }}>
-                  <Badge label={`ML Traffic: ${ml.traffic.label}`} color={getMlBadgeColor(ml.traffic.label)} />
+                  <Badge label={`ML · ${ml.traffic.label}`} color={getMlBadgeColor(ml.traffic.label)} />
                 </div>
+                <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 16, alignItems: "start" }}>
 
-                {/* traffic level */}
-                <div style={{ marginBottom: 16 }}>
-                  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 7 }}>
-                    <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
-                      <span style={{ color: trafficColor }}><Ico d={PATHS.signal} size={14} /></span>
-                      <span style={{ fontSize: 11, color: "rgba(255,255,255,0.45)", fontWeight: 600 }}>Traffic Level</span>
+                  {/* traffic & throughput */}
+                  <div style={{ display: "grid", gap: 16, padding: 16, borderRadius: 18, background: "rgba(255,255,255,0.02)", border: "1px solid rgba(255,255,255,0.06)" }}>
+                    <div>
+                      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 8 }}>
+                        <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
+                          <span style={{ color: trafficColor }}><Ico d={PATHS.signal} size={14} /></span>
+                          <span style={{ fontSize: 11, color: "rgba(255,255,255,0.45)", fontWeight: 600 }}>Traffic Level</span>
+                        </div>
+                        <Badge label={trafficLabel} color={trafficV} />
+                      </div>
+                      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 10 }}>
+                        <span style={{ fontFamily: "'DM Mono',monospace", fontSize: 22, fontWeight: 800, color: trafficColor }}>{s.traffic_level}</span>
+                        <span style={{ fontSize: 11, color: "rgba(255,255,255,0.45)" }}>%</span>
+                      </div>
+                      <Bar2 value={s.traffic_level} max={100} color={trafficColor} />
                     </div>
-                    <div style={{ display: "flex", alignItems: "center", gap: 7 }}>
-                      <span style={{ fontFamily: "'DM Mono',monospace", fontSize: 15, fontWeight: 800, color: trafficColor }}>{s.traffic_level}</span>
-                      <Badge label={trafficLabel} color={trafficV} />
+
+                    <div>
+                      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 8 }}>
+                        <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
+                          <span style={{ color: speedColor }}><Ico d={PATHS.activity} size={14} /></span>
+                          <span style={{ fontSize: 11, color: "rgba(255,255,255,0.45)", fontWeight: 600 }}>Network Speed</span>
+                        </div>
+                        <Badge label={s.speed > 400 ? "Fast" : s.speed > 150 ? "Normal" : "Slow"} color={speedV} />
+                      </div>
+                      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 10 }}>
+                        <span style={{ fontFamily: "'DM Mono',monospace", fontSize: 22, fontWeight: 800, color: speedColor }}>{s.speed}</span>
+                        <span style={{ fontSize: 11, color: "rgba(255,255,255,0.45)" }}>Mbps</span>
+                      </div>
+                      <Bar2 value={s.speed} max={600} color={speedColor} />
+                      <div style={{ height: 80, marginTop: 10 }}>
+                        <ResponsiveContainer width="100%" height="100%">
+                          <LineChart data={h.speed}>
+                            <Line type="monotone" dataKey="v" stroke={speedColor} strokeWidth={1.5} dot={false} />
+                            <Tooltip content={<MiniTip />} />
+                          </LineChart>
+                        </ResponsiveContainer>
+                      </div>
                     </div>
                   </div>
-                  <Bar2 value={s.traffic_level} max={100} color={trafficColor} />
-                </div>
 
-                <div style={{ height: 1, background: "rgba(255,255,255,0.05)", marginBottom: 14 }} />
-
-                {/* speed */}
-                <div>
-                  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 7 }}>
-                    <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
-                      <span style={{ color: speedColor }}><Ico d={PATHS.activity} size={14} /></span>
-                      <span style={{ fontSize: 11, color: "rgba(255,255,255,0.45)", fontWeight: 600 }}>Network Speed</span>
-                    </div>
-                    <div style={{ display: "flex", alignItems: "center", gap: 7 }}>
-                      <span style={{ fontFamily: "'DM Mono',monospace", fontSize: 15, fontWeight: 800, color: speedColor }}>{s.speed} Mbps</span>
-                      <Badge label={s.speed > 400 ? "Fast" : s.speed > 150 ? "Normal" : "Slow"} color={speedV} />
-                    </div>
-                  </div>
-                  <Bar2 value={s.speed} max={600} color={speedColor} />
-                  <div style={{ height: 60, marginTop: 8 }}>
-                    <ResponsiveContainer width="100%" height="100%">
-                      <LineChart data={h.speed}>
-                        <Line type="monotone" dataKey="v" stroke={speedColor} strokeWidth={1.5} dot={false} />
-                        <Tooltip content={<MiniTip />} />
-                      </LineChart>
-                    </ResponsiveContainer>
-                  </div>
-                </div>
-              </Card>
-
-              {/* LATENCY */}
-              <Card>
-                <CardLabel text="Network Latency" />
-
-                <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between",
-                  padding: "13px 15px", borderRadius: 13,
-                  background: "rgba(96,165,250,0.07)", border: "1px solid rgba(96,165,250,0.14)",
-                  marginBottom: 14 }}>
-                  <div>
-                    <div style={{ fontSize: 10, color: "rgba(255,255,255,0.35)", marginBottom: 5 }}>Current Latency</div>
-                    <div style={{ display: "flex", alignItems: "center", gap: 6, marginBottom: 6 }}>
-                      <span style={{ fontFamily: "'DM Mono',monospace", fontSize: 26, fontWeight: 800, color: latColor }}>{s.latency}</span>
-                      <span style={{ fontSize: 12, color: "rgba(255,255,255,0.4)" }}>ms</span>
+                  {/* latency */}
+                  <div style={{ display: "grid", gap: 16, padding: 16, borderRadius: 18, background: "rgba(255,255,255,0.02)", border: "1px solid rgba(255,255,255,0.06)" }}>
+                    <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+                      <div>
+                        <div style={{ fontSize: 10, color: "rgba(255,255,255,0.35)", marginBottom: 5 }}>Current Latency</div>
+                        <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
+                          <span style={{ fontFamily: "'DM Mono',monospace", fontSize: 26, fontWeight: 800, color: latColor }}>{s.latency}</span>
+                          <span style={{ fontSize: 12, color: "rgba(255,255,255,0.4)" }}>ms</span>
+                        </div>
+                      </div>
+                      <span style={{ color: latColor, opacity: 0.7 }}><Ico d={PATHS.clock} size={28} /></span>
                     </div>
                     <Badge label={s.latency > 60 ? "High" : s.latency > 30 ? "Medium" : "Low"} color={latV} />
+                    <Bar2 value={s.latency} max={120} color={latColor} />
+                    <div style={{ height: 160 }}>
+                      <ResponsiveContainer width="100%" height="100%">
+                        <LineChart data={h.latency}>
+                          <CartesianGrid strokeDasharray="2 4" stroke="rgba(255,255,255,0.04)" />
+                          <XAxis dataKey="t" tick={{ fontSize: 9, fill: "rgba(255,255,255,0.25)" }} axisLine={false} tickLine={false} />
+                          <YAxis tick={{ fontSize: 9, fill: "rgba(255,255,255,0.25)" }} axisLine={false} tickLine={false} width={24} />
+                          <Line type="monotone" dataKey="v" stroke={latColor} strokeWidth={2} dot={false}
+                            style={{ filter: `drop-shadow(0 0 4px ${latColor}66)` }} />
+                          <Tooltip content={<MiniTip />} />
+                        </LineChart>
+                      </ResponsiveContainer>
+                    </div>
                   </div>
-                  <span style={{ color: latColor, opacity: 0.6 }}><Ico d={PATHS.clock} size={26} /></span>
-                </div>
-
-                <div style={{ marginBottom: 12 }}>
-                  <Bar2 value={s.latency} max={120} color={latColor} />
-                </div>
-
-                <div style={{ height: 100 }}>
-                  <ResponsiveContainer width="100%" height="100%">
-                    <LineChart data={h.latency}>
-                      <CartesianGrid strokeDasharray="2 4" stroke="rgba(255,255,255,0.04)" />
-                      <XAxis dataKey="t" tick={{ fontSize: 9, fill: "rgba(255,255,255,0.25)" }} axisLine={false} tickLine={false} />
-                      <YAxis tick={{ fontSize: 9, fill: "rgba(255,255,255,0.25)" }} axisLine={false} tickLine={false} width={24} />
-                      <Line type="monotone" dataKey="v" stroke={latColor} strokeWidth={2} dot={false}
-                        style={{ filter: `drop-shadow(0 0 4px ${latColor}66)` }} />
-                      <Tooltip content={<MiniTip />} />
-                    </LineChart>
-                  </ResponsiveContainer>
                 </div>
               </Card>
             </div>
