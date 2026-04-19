@@ -11,7 +11,7 @@ const clamp = (v, lo, hi) => Math.min(hi, Math.max(lo, v));
 const drift = (v, lo, hi, step = 3) => clamp(v + rand(-step, step), lo, hi);
 
 const initSensor = () => ({
-  noise: rand(38, 72),
+  noise: rand(0, 15),
   light: rand(180, 900),
   count: rand(14, 60),
   is_librarian: Math.random() > 0.3,
@@ -188,9 +188,9 @@ const fallbackMlFromSensor = (s) => {
       ? "Comfortable"
       : "Slightly Uncomfortable";
   const focusLabel =
-    s.noise <= 50 && s.light >= 300
+    s.noise <= 2 && s.light >= 300
       ? "Focused"
-      : s.noise <= 60
+      : s.noise <= 10
         ? "Partially Focused"
         : "Distracted";
   const trafficLabel =
@@ -238,10 +238,10 @@ function StudyComfortTab({ s, h, ml }) {
       .finally(() => setLoading(false));
   }, []);
 
-  const noiseColor = s.noise > 65 ? "#f87171" : s.noise > 50 ? "#fbbf24" : "#34d399";
-  const noiseLabel = s.noise > 65 ? "Too Noisy" : s.noise > 50 ? "Moderate" : "Comfortable";
-  const noiseV     = s.noise > 65 ? "red" : s.noise > 50 ? "yellow" : "green";
-  const lightColor = s.light < 250 ? "#f87171" : s.light < 500 ? "#fbbf24" : "#fbbf24";
+  const noiseColor = s.noise > 10 ? "#f87171" : s.noise > 2 ? "#fbbf24" : "#34d399";
+  const noiseLabel = s.noise > 10 ? "Too Noisy" : s.noise > 2 ? "Moderate" : "Comfortable";
+  const noiseV     = s.noise > 10 ? "red" : s.noise > 2 ? "yellow" : "green";
+  const lightColor = s.light < 250 ? "#f87171" : s.light < 500 ? "#fbbf24" : "#34d399";
   const lightLabel = s.light < 250 ? "Too Dark" : s.light < 500 ? "Dim" : "Well Lit";
   const lightV     = s.light < 250 ? "red" : s.light < 500 ? "yellow" : "green";
 
@@ -279,14 +279,14 @@ function StudyComfortTab({ s, h, ml }) {
             <Badge label={noiseLabel} color={noiseV} />
           </div>
           <div style={{ display: "flex", alignItems: "center", gap: 20 }}>
-            <RadialGauge value={s.noise} max={100} color={noiseColor} unit="dB" />
+            <RadialGauge value={s.noise} max={20} color={noiseColor} unit="dB" />
             <div style={{ flex: 1 }}>
               <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 6 }}>
                 <span style={{ fontSize: 11, color: "rgba(255,255,255,0.35)" }}>Level</span>
                 <span style={{ fontFamily: "'DM Mono',monospace", fontSize: 13, fontWeight: 700, color: noiseColor }}>{s.noise} dB</span>
               </div>
-              <Bar2 value={s.noise} max={100} color={noiseColor} />
-              {s.noise > 65 && (
+              <Bar2 value={s.noise} max={20} color={noiseColor} />
+              {s.noise > 10 && (
                 <div style={{ display: "flex", alignItems: "center", gap: 5, marginTop: 8,
                   padding: "5px 8px", borderRadius: 7, background: "rgba(248,113,113,0.09)", border: "1px solid rgba(248,113,113,0.18)" }}>
                   <span style={{ color: "#f87171" }}><Ico d={PATHS.alert} size={12} /></span>
@@ -381,9 +381,9 @@ function StudyComfortTab({ s, h, ml }) {
             </thead>
             <tbody>
               {scHistory.map((row, i) => {
-                const nC = row.noise > 65 ? "#f87171" : row.noise > 50 ? "#fbbf24" : "#34d399";
-                const lC = row.light < 250 ? "#f87171" : row.light < 500 ? "#fbbf24" : "#fbbf24";
-                const ok = row.noise <= 50 && row.light >= 500;
+                const nC = row.noise > 10 ? "#f87171" : row.noise > 2 ? "#fbbf24" : "#34d399";
+                const lC = row.light < 250 ? "#f87171" : row.light < 500 ? "#fbbf24" : "#34d399";
+                const ok = row.noise <= 2 && row.light >= 500;
                 const timeLabel = row.timestamp
                   ? new Date(row.timestamp).toLocaleString("en-US", { month: "short", day: "numeric", hour: "2-digit", minute: "2-digit", second: "2-digit", hour12: false })
                   : "—";
@@ -1190,7 +1190,7 @@ export default function LibraryIoTDashboard() {
     setSensor(prev => {
       if (!prev) prev = initSensor();
       const next = {
-        noise: drift(prev.noise, 30, 90, 4),
+        noise: drift(prev.noise, 0, 20, 2),
         light: drift(prev.light, 120, 1000, 30),
         count: drift(prev.count, 5, 80, 2),
         is_librarian: Math.random() > 0.06 ? prev.is_librarian : !prev.is_librarian,
@@ -1284,10 +1284,10 @@ export default function LibraryIoTDashboard() {
   const ml = mlInsights || fallbackMlFromSensor(s);
 
   // derived
-  const noiseColor = s.noise > 65 ? "#f87171" : s.noise > 50 ? "#fbbf24" : "#34d399";
-  const noiseLabel = s.noise > 65 ? "Too Noisy" : s.noise > 50 ? "Moderate" : "Comfortable";
-  const noiseV     = s.noise > 65 ? "red" : s.noise > 50 ? "yellow" : "green";
-  const lightColor = s.light < 250 ? "#f87171" : s.light < 500 ? "#fbbf24" : "#fbbf24";
+  const noiseColor = s.noise > 10 ? "#f87171" : s.noise > 2 ? "#fbbf24" : "#34d399";
+  const noiseLabel = s.noise > 10 ? "Too Noisy" : s.noise > 2 ? "Moderate" : "Comfortable";
+  const noiseV     = s.noise > 10 ? "red" : s.noise > 2 ? "yellow" : "green";
+  const lightColor = s.light < 250 ? "#f87171" : s.light < 500 ? "#fbbf24" : "#34d399";
   const lightLabel = s.light < 250 ? "Too Dark" : s.light < 500 ? "Dim" : "Well Lit";
   const lightV     = s.light < 250 ? "red" : s.light < 500 ? "yellow" : "green";
   const tempColor  = s.temperature > 30 ? "#f87171" : "#34d399";
@@ -1725,13 +1725,13 @@ export default function LibraryIoTDashboard() {
                     <div style={{ fontSize: 10, fontWeight: 700, letterSpacing: "0.08em", color: "rgba(255,255,255,0.35)",
                       marginBottom: 12, textTransform: "uppercase" }}>Noise</div>
                     <div style={{ display: "flex", alignItems: "flex-start", gap: 14 }}>
-                      <RadialGauge value={s.noise} max={100} color={noiseColor} unit="dB" />
+                      <RadialGauge value={s.noise} max={20} color={noiseColor} unit="dB" />
                       <div style={{ flex: 1, minWidth: 0 }}>
                         <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 6 }}>
                           <span style={{ fontSize: 11, color: "rgba(255,255,255,0.35)" }}>Level</span>
                           <span style={{ fontFamily: "'DM Mono',monospace", fontSize: 13, fontWeight: 700, color: noiseColor }}>{s.noise} dB</span>
                         </div>
-                        <Bar2 value={s.noise} max={100} color={noiseColor} />
+                        <Bar2 value={s.noise} max={20} color={noiseColor} />
                         <div style={{ height: 72, marginTop: 12 }}>
                           <ResponsiveContainer width="100%" height="100%">
                             <LineChart data={h.noise}>
