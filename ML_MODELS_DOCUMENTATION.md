@@ -46,7 +46,7 @@ ml-service/                   # Python ML service
   "temperature": 27.5,
   "humidity": 62,
   "light": 540,
-  "noise": 48,
+  "noise": 5,
   "network_speed": 220,
   "latency": 24,
   "occupancy_count": 31,
@@ -154,8 +154,8 @@ Predict whether study conditions help student focus.
 
 1. Light suitability around ideal ~600 lux:
    - `light_score = max(0, 1 - abs(light - 600)/500)`
-2. Noise suitability (penalize above 45 dB):
-   - `noise_score = max(0, 1 - max(0, noise - 45)/40)`
+Noise suitability (penalize above 2 dB):
+   - `noise_score = max(0, 1 - max(0, noise - 2)/16)`
 3. Weighted blend:
    - `score = 0.55 * light_score + 0.45 * noise_score`
 4. Label:
